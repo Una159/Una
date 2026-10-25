@@ -81,15 +81,16 @@ static const NSInteger KDUSettingsEntryTag = 0x4B445532;
 
     // Use specific labels only. A generic "è®¾ç½®" marker can match unrelated pages.
     NSArray<NSString *> *markers = @[
-        @"è´¦å·ä¸å®å¨",
-        @"éç¨è®¾ç½®",
-        @"éç§æ¿ç­",
-        @"åºç¨æé",
-        @"ä¸ªäººä¿¡æ¯ç®¡ç",
-        @"ç¨æ·åè®®",
-        @"ä¸ªäººä¿¡æ¯æ¶éæ¸å",
-        @"ç¬¬ä¸æ¹ä¿¡æ¯å±äº«æ¸å"
-    ];
+    @"账号与安全",
+    @"通用设置",
+    @"隐私政策",
+    @"应用权限",
+    @"个人信息管理",
+    @"用户协议",
+    @"个人信息收集清单",
+    @"第三方信息共享清单"
+];
+        
 
     BOOL matched = NO;
     for (NSString *marker in markers) {
@@ -121,7 +122,7 @@ static const NSInteger KDUSettingsEntryTag = 0x4B445532;
     entry.layer.cornerRadius = 12;
     entry.contentHorizontalAlignment = UIControlContentHorizontalAlignmentLeft;
     entry.contentEdgeInsets = UIEdgeInsetsMake(0, 16, 0, 16);
-    [entry setTitle:@"K-Douyin Ultra  âº" forState:UIControlStateNormal];
+    [entry setTitle:@"K-Douyin Ultra" forState:UIControlStateNormal];
     [entry setTitleColor:UIColor.labelColor forState:UIControlStateNormal];
     entry.titleLabel.font = [UIFont systemFontOfSize:16 weight:UIFontWeightSemibold];
     [entry addTarget:self action:@selector(openPluginSettings:) forControlEvents:UIControlEventTouchUpInside];
