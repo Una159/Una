@@ -20,31 +20,59 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Install Theos
-        uses: beerpsi/setup-theos@v1
-        with:
-          theos-src: https://github.com/theos/theos
-          theos-sdks: https://github.com/theos/sdks
+        shell: bash
+        run: |
+          set -euo pipefail
+          export THEOS="$GITHUB_WORKSPACE/theos"
+
+          brew install ldid xz
+          bash -c "$(curl -fsSL https://raw.githubusercontent.com/theos/theos/master/bin/install-theos)"
+
+          if [ ! -d "$THEOS" ]; then
+            echo "ERROR: Theos installation failed: $THEOS not found"
+            exit 1
+          fi
+
+          echo "THEOS=$THEOS" >> "$GITHUB_ENV"
+          echo "Theos directory:"
+          ls -la "$THEOS"
+          echo "SDK directory:"
+          ls -la "$THEOS/sdks"
 
       - name: Check project files
+        shell: bash
         run: |
-          test -f Makefile
-          test -f KDU.xm
-          test -f control
+          set -euo pipefail
+          echo "Checking project files..."
+          test -f Makefile || { echo "Missing Makefile in repository root"; exit 1; }
+          test -f KDU.xm || { echo "Missing KDU.xm in repository root"; exit 1; }
+          test -f control || { echo "Missing control in repository root"; exit 1; }
+          echo "Required project files found."
 
       - name: Build package
+        shell: bash
         run: |
-          export THEOS="$GITHUB_WORKSPACE/theos"
+          set -euo pipefail
           make clean
           make package FINALPACKAGE=1
 
       - name: Collect outputs
+        shell: bash
         if: success()
         run: |
+          set -euo pipefail
           mkdir -p dist
-          find packages -type f -name '*.deb' -exec cp {} dist/ \;
-          find .theos -type f -name 'KDouyinUltra.dylib' -exec cp {} dist/ \;
-          ls -lh dist
-          test -n "$(find dist -type f -print -quit)"
+
+          find packages -type f -name '*.deb' -exec cp {} dist/ \; 2>/dev/null || true
+          find .theos -type f -name 'KDouyinUltra.dylib' -exec cp {} dist/ \; 2>/dev/null || true
+
+          echo "Build outputs:"
+          find dist -maxdepth 1 -type f -print
+
+          if [ -z "$(find dist -maxdepth 1 -type f -print -quit)" ]; then
+            echo "ERROR: No build artifacts found."
+            exit 1
+          fi
 
       - name: Upload build artifacts
         if: success()
