@@ -201,7 +201,9 @@ static const NSInteger KDUSettingsEntryTag = 0x4B445532;
     // Only inspect the controller that just appeared. Do not recursively scan every window
     // after every viewDidAppear; that repeated whole-app traversal caused avoidable lag.
     dispatch_async(dispatch_get_main_queue(), ^{
-        [KDUSettingsIntegration addEntryIfSettingsController:self];
+        // Inspect only the newly appeared controller subtree. The settings list may be
+        // hosted by a child controller, so checking self alone can miss the native page.
+        [KDUSettingsIntegration inspectController:self];
     });
 }
 @end
