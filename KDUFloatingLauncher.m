@@ -33,11 +33,15 @@ static NSInteger const KDUFloatingTag = 0x4B445531;
     button.frame = CGRectMake(MAX(12, window.bounds.size.width - 62), window.bounds.size.height * 0.62, 48, 48);
     button.autoresizingMask = UIViewAutoresizingFlexibleLeftMargin | UIViewAutoresizingFlexibleTopMargin;
     if (@available(iOS 13.0, *)) {
-        button.backgroundColor = [UIColor.secondarySystemBackgroundColor colorWithAlphaComponent:0.78];
-        button.layer.borderColor = [UIColor.separatorColor colorWithAlphaComponent:0.65].CGColor;
+        button.backgroundColor =
+            [UIColor.secondarySystemBackgroundColor colorWithAlphaComponent:0.78];
+        button.layer.borderColor =
+            [UIColor.separatorColor colorWithAlphaComponent:0.65].CGColor;
     } else {
-        button.backgroundColor = [UIColor colorWithWhite:0.16 alpha:0.92];
-        button.layer.borderColor = [UIColor colorWithWhite:1 alpha:0.35].CGColor;
+        button.backgroundColor =
+            [UIColor colorWithWhite:0.16 alpha:0.92];
+        button.layer.borderColor =
+            [UIColor colorWithWhite:1 alpha:0.35].CGColor;
     }
     button.layer.cornerRadius = 24;
     button.layer.cornerCurve = kCACornerCurveContinuous;
@@ -65,7 +69,7 @@ static NSInteger const KDUFloatingTag = 0x4B445531;
     UIViewController *root = window.rootViewController;
     if (!root) return;
     UIViewController *top = [self topController:root];
-    if (!top || [top isKindOfClass:KDUSettingsController.class] || top.presentedViewController) return;
+    if ([top isKindOfClass:KDUSettingsController.class]) return;
     UINavigationController *nav = [[UINavigationController alloc] initWithRootViewController:[KDUSettingsController new]];
     nav.modalPresentationStyle = UIModalPresentationPageSheet;
     [top presentViewController:nav animated:YES completion:nil];

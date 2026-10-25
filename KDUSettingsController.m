@@ -131,7 +131,8 @@
     [self.tableView reloadData];
 
     if (self.visibleFeatures.count == 0) {
-        UILabel *emptyLabel = [[UILabel alloc] initWithFrame:CGRectMake(0, 0, self.tableView.bounds.size.width, 88)];
+        UILabel *emptyLabel = [[UILabel alloc]
+            initWithFrame:CGRectMake(0, 0, self.tableView.bounds.size.width, 88)];
         emptyLabel.text = self.searchController.searchBar.text.length
             ? @"没有找到匹配的功能"
             : @"当前分类暂无功能";
@@ -210,15 +211,14 @@
 
     UISwitch *toggle = [UISwitch new];
 
-    // 未实现的模块不提供可误触的开关；避免让用户误以为功能已经生效。
-    toggle.enabled = feature.implemented;
-    toggle.alpha = feature.implemented ? 1.0 : 0.55;
-
     toggle.on = [[KDUConfigManager shared]
         boolForKey:feature.configKey
           fallback:feature.defaultEnabled];
 
     toggle.accessibilityLabel = feature.title;
+    // 占位功能不能交互，避免让用户误以为该功能已实现。
+    toggle.enabled = feature.implemented;
+    toggle.alpha = feature.implemented ? 1.0 : 0.55;
     toggle.tag = indexPath.row;
 
     [toggle addTarget:self
