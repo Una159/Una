@@ -6,12 +6,15 @@ include $(THEOS)/makefiles/common.mk
 
 TWEAK_NAME = KDouyinUltra
 
+
 KDouyinUltra_FILES = KDU.xm \
     KDUConfigManager.m \
     KDUFeatureRegistry.m \
     KDUCompatibility.m \
     KDUSettingsController.m \
-    KDUFloatingLauncher.m
+    KDUFloatingLauncher.m \
+    KDUSettingsIntegration.m
+
 
 KDouyinUltra_CFLAGS = -fobjc-arc -Wno-deprecated-declarations
 KDouyinUltra_FRAMEWORKS = UIKit Foundation
