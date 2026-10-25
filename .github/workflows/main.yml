@@ -1,4 +1,3 @@
-
 name: Build K-Douyin Ultra
 
 on:
@@ -20,16 +19,9 @@ jobs:
       - name: Checkout source
         uses: actions/checkout@v4
 
-      
       - name: Install Theos
         uses: beerpsi/setup-theos@v1
         with:
-          theos-src: https://github.com/theos/theos
-          theos-sdks: https://github.com/theos/sdks
-
-        uses: Randomblock1/theos-action@v1
-        with:
-          theos-dir: theos
           theos-src: https://github.com/theos/theos
           theos-sdks: https://github.com/theos/sdks
 
