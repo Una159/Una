@@ -91,15 +91,17 @@ static const NSInteger KDUSettingsEntryTag = 0x4B445532;
     NSMutableString *visibleText = [NSMutableString string];
     [self collectTextFromView:controller.view into:visibleText depth:0];
     NSArray<NSString *> *markers = @[
-        @"è´¦å·ä¸å®å¨",
-        @"éç¨è®¾ç½®",
-        @"éç§æ¿ç­",
-        @"åºç¨æé",
-        @"ä¸ªäººä¿¡æ¯ç®¡ç",
-        @"ç¨æ·åè®®",
-        @"ä¸ªäººä¿¡æ¯æ¶éæ¸å",
-        @"ç¬¬ä¸æ¹ä¿¡æ¯å±äº«æ¸å"
-    ];
+    @"账号与安全",
+    @"通用设置",
+    @"隐私政策",
+    @"应用权限",
+    @"个人信息管理",
+    @"用户协议",
+    @"个人信息收集清单",
+    @"第三方信息共享清单",
+    @"设置"
+];
+   
 
     BOOL matched = NO;
     for (NSString *marker in markers) {
@@ -194,16 +196,13 @@ static const NSInteger KDUSettingsEntryTag = 0x4B445532;
 @end
 
 @implementation UIViewController (KDUSettingsIntegration)
+
 - (void)kdu_viewDidAppear:(BOOL)animated {
-    // Swizzled implementation calls the original implementation first.
     [self kdu_viewDidAppear:animated];
 
-    // Only inspect the controller that just appeared. Do not recursively scan every window
-    // after every viewDidAppear; that repeated whole-app traversal caused avoidable lag.
     dispatch_async(dispatch_get_main_queue(), ^{
-        // Inspect only the newly appeared controller subtree. The settings list may be
-        // hosted by a child controller, so checking self alone can miss the native page.
-        [KDUSettingsIntegration inspectController:self];
+        [KDUSettingsIntegration scanForSettingsPage];
     });
 }
+
 @end
