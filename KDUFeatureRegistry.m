@@ -22,7 +22,11 @@
         NSArray<NSDictionary *> *items = @[
           @{@"id":@"video.hideWatermarkButton",@"title":@"隐藏水印按钮",@"detail":@"尚未接入抖音页面节点；当前不隐藏按钮。",@"category":@"视频",@"implemented":@NO},
           @{@"id":@"download.enabled",@"title":@"视频保存模块",@"detail":@"尚未接入视频下载流程；当前不保存媒体文件。",@"category":@"下载",@"implemented":@NO},
-          @{@"id":@"interface.liquidGlass",@"title":@"液态玻璃主题",@"detail":@"设置页已有系统模糊材质；此开关尚未控制抖音页面主题。",@"category":@"界面",@"implemented":@NO},
+          @{@"id":@"interface.liquidGlass",
+  @"title":@"液态玻璃主题",
+  @"detail":@"控制设置页的玻璃模糊、透明卡片、边框和阴影效果。",
+  @"category":@"界面",
+  @"implemented":@YES},
           @{@"id":@"interface.hideShopEntry",@"title":@"隐藏商城入口",@"detail":@"尚未接入经过版本验证的商城入口识别逻辑。",@"category":@"界面",@"implemented":@NO},
           @{@"id":@"privacy.reduceTrackingUI",@"title":@"减少干扰界面",@"detail":@"当前不拦截网络请求，也不改变隐私或数据上报行为。",@"category":@"隐私",@"implemented":@NO},
           @{@"id":@"comments.localAudioPicker",@"title":@"评论本地音频选择",@"detail":@"尚未接入本地音频选择和评论发送流程。",@"category":@"评论",@"implemented":@NO},
