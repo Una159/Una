@@ -19,7 +19,7 @@ jobs:
       - name: Checkout source
         uses: actions/checkout@v4
 
-            - name: Install Theos
+      - name: Install Theos
         shell: bash
         env:
           THEOS: ${{ github.workspace }}/theos
@@ -71,13 +71,10 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p dist
-
           find packages -type f -name '*.deb' -exec cp {} dist/ \; 2>/dev/null || true
           find .theos -type f -name 'KDouyinUltra.dylib' -exec cp {} dist/ \; 2>/dev/null || true
-
           echo "Build outputs:"
           find dist -maxdepth 1 -type f -print
-
           if [ -z "$(find dist -maxdepth 1 -type f -print -quit)" ]; then
             echo "ERROR: No build artifacts found."
             exit 1
