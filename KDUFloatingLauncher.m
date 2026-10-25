@@ -32,12 +32,22 @@ static NSInteger const KDUFloatingTag = 0x4B445531;
     button.tag = KDUFloatingTag;
     button.frame = CGRectMake(MAX(12, window.bounds.size.width - 62), window.bounds.size.height * 0.62, 48, 48);
     button.autoresizingMask = UIViewAutoresizingFlexibleLeftMargin | UIViewAutoresizingFlexibleTopMargin;
-    button.backgroundColor = [UIColor colorWithRed:0.16 green:0.17 blue:0.20 alpha:0.92];
+    if (@available(iOS 13.0, *)) {
+        button.backgroundColor = [UIColor.secondarySystemBackgroundColor colorWithAlphaComponent:0.78];
+        button.layer.borderColor = [UIColor.separatorColor colorWithAlphaComponent:0.65].CGColor;
+    } else {
+        button.backgroundColor = [UIColor colorWithWhite:0.16 alpha:0.92];
+        button.layer.borderColor = [UIColor colorWithWhite:1 alpha:0.35].CGColor;
+    }
     button.layer.cornerRadius = 24;
+    button.layer.cornerCurve = kCACornerCurveContinuous;
     button.layer.borderWidth = 1;
-    button.layer.borderColor = [UIColor colorWithWhite:1 alpha:0.35].CGColor;
+    button.layer.shadowColor = UIColor.blackColor.CGColor;
+    button.layer.shadowOpacity = 0.12;
+    button.layer.shadowRadius = 12;
+    button.layer.shadowOffset = CGSizeMake(0, 4);
     [button setTitle:@"K" forState:UIControlStateNormal];
-    [button setTitleColor:UIColor.whiteColor forState:UIControlStateNormal];
+    [button setTitleColor:UIColor.labelColor forState:UIControlStateNormal];
     button.titleLabel.font = [UIFont boldSystemFontOfSize:18];
     button.accessibilityLabel = @"打开 K-Douyin Ultra 设置";
     [button addTarget:self action:@selector(openSettings) forControlEvents:UIControlEventTouchUpInside];
@@ -55,7 +65,7 @@ static NSInteger const KDUFloatingTag = 0x4B445531;
     UIViewController *root = window.rootViewController;
     if (!root) return;
     UIViewController *top = [self topController:root];
-    if ([top isKindOfClass:KDUSettingsController.class]) return;
+    if (!top || [top isKindOfClass:KDUSettingsController.class] || top.presentedViewController) return;
     UINavigationController *nav = [[UINavigationController alloc] initWithRootViewController:[KDUSettingsController new]];
     nav.modalPresentationStyle = UIModalPresentationPageSheet;
     [top presentViewController:nav animated:YES completion:nil];
