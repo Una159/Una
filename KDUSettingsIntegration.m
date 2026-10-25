@@ -1,208 +1,335 @@
-#import "KDUSettingsIntegration.h"
 #import "KDUSettingsController.h"
-#import <UIKit/UIKit.h>
-#import <objc/runtime.h>
+#import "KDUFeatureRegistry.h"
+#import "KDUConfigManager.h"
+#import "KDUCompatibility.h"
 
-static const NSInteger KDUSettingsEntryTag = 0x4B445532;
-
-@interface UIViewController (KDUSettingsIntegration)
-- (void)kdu_viewDidAppear:(BOOL)animated;
+@interface KDUFeatureTableCell : UITableViewCell
 @end
 
-@interface KDUSettingsIntegration ()
-+ (void)inspectController:(UIViewController *)controller;
-+ (void)addEntryIfSettingsController:(UIViewController *)controller;
-+ (void)collectTextFromView:(UIView *)view into:(NSMutableString *)result depth:(NSUInteger)depth;
-+ (UITableView *)findTableView:(UIView *)view depth:(NSUInteger)depth;
-+ (void)openPluginSettings:(UIButton *)sender;
-+ (UIViewController *)topController:(UIViewController *)controller;
-@end
+@implementation KDUFeatureTableCell
 
-@implementation KDUSettingsIntegration
+- (instancetype)initWithStyle:(UITableViewCellStyle)style
+              reuseIdentifier:(NSString *)reuseIdentifier {
+    self = [super initWithStyle:UITableViewCellStyleSubtitle
+                reuseIdentifier:reuseIdentifier];
+    if (self) {
+        self.backgroundColor = UIColor.clearColor;
+        self.contentView.backgroundColor = UIColor.clearColor;
+        self.backgroundView = [[UIView alloc] initWithFrame:CGRectZero];
+        self.backgroundView.backgroundColor = UIColor.clearColor;
 
-+ (void)installHooks {
-    static dispatch_once_t onceToken;
-    dispatch_once(&onceToken, ^{
-        Method original = class_getInstanceMethod(UIViewController.class, @selector(viewDidAppear:));
-        Method replacement = class_getInstanceMethod(UIViewController.class, @selector(kdu_viewDidAppear:));
-        if (original && replacement) {
-            method_exchangeImplementations(original, replacement);
-        }
-    });
-
-    // One initial scan handles a settings page that is already visible at injection time.
-    dispatch_async(dispatch_get_main_queue(), ^{
-        [self scanForSettingsPage];
-    });
+        // Frosted-glass card: blur + translucent tint, clipped to continuous corners.
+        UIVisualEffectView *glass = [[UIVisualEffectView alloc]
+            initWithEffect:[UIBlurEffect effectWithStyle:UIBlurEffectStyleSystemMaterial]];
+        glass.frame = self.bounds;
+        glass.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
+        glass.layer.cornerRadius = 16.0;
+        glass.layer.cornerCurve = kCACornerCurveContinuous;
+        glass.clipsToBounds = YES;
+        glass.contentView.backgroundColor =
+            [UIColor.secondarySystemGroupedBackgroundColor colorWithAlphaComponent:0.24];
+        self.backgroundView = glass;
+        self.contentView.layer.cornerRadius = 16.0;
+        self.contentView.layer.cornerCurve = kCACornerCurveContinuous;
+        self.contentView.layer.masksToBounds = YES;
+        self.textLabel.font = [UIFont systemFontOfSize:15
+                                                 weight:UIFontWeightSemibold];
+        self.detailTextLabel.font = [UIFont systemFontOfSize:12
+                                                       weight:UIFontWeightRegular];
+        self.detailTextLabel.textColor = UIColor.secondaryLabelColor;
+        self.detailTextLabel.numberOfLines = 2;
+    }
+    return self;
 }
 
-+ (void)scanForSettingsPage {
-    if (!NSThread.isMainThread) {
-        dispatch_async(dispatch_get_main_queue(), ^{
-            [self scanForSettingsPage];
-        });
+@end
+
+@interface KDUSettingsController () <UISearchResultsUpdating>
+@property (nonatomic, strong) UISearchController *searchController;
+@property (nonatomic, copy) NSArray<KDUFeature *> *visibleFeatures;
+@property (nonatomic, copy) NSArray<NSString *> *categories;
+@property (nonatomic, copy) NSString *selectedCategory;
+@end
+
+@implementation KDUSettingsController
+
+- (void)viewDidLoad {
+    [super viewDidLoad];
+
+    self.title = @"K-Douyin Ultra";
+    self.view.backgroundColor = UIColor.systemGroupedBackgroundColor;
+    self.tableView.backgroundColor = UIColor.clearColor;
+    self.tableView.separatorStyle = UITableViewCellSeparatorStyleNone;
+    self.tableView.contentInset = UIEdgeInsetsMake(6, 0, 18, 0);
+
+    if (@available(iOS 15.0, *)) {
+        self.tableView.sectionHeaderTopPadding = 8.0;
+    }
+
+    self.navigationController.navigationBar.tintColor = UIColor.labelColor;
+    self.tableView.backgroundView = [[UIVisualEffectView alloc]
+        initWithEffect:[UIBlurEffect effectWithStyle:UIBlurEffectStyleSystemThinMaterial]];
+
+    if (@available(iOS 13.0, *)) {
+        self.navigationController.navigationBar.prefersLargeTitles = YES;
+
+        UINavigationBarAppearance *appearance = [UINavigationBarAppearance new];
+        [appearance configureWithDefaultBackground];
+        appearance.backgroundEffect =
+            [UIBlurEffect effectWithStyle:UIBlurEffectStyleSystemChromeMaterial];
+        appearance.backgroundColor = UIColor.clearColor;
+        appearance.shadowColor = UIColor.clearColor;
+
+        self.navigationController.navigationBar.standardAppearance = appearance;
+        self.navigationController.navigationBar.scrollEdgeAppearance = appearance;
+        self.navigationController.navigationBar.compactAppearance = appearance;
+    }
+
+    self.navigationItem.largeTitleDisplayMode =
+        UINavigationItemLargeTitleDisplayModeAlways;
+    self.navigationController.navigationBar.prefersLargeTitles = YES;
+
+    self.categories = [[KDUFeatureRegistry shared] categories];
+    self.selectedCategory = @"å¨é¨";
+    self.visibleFeatures =
+        [[KDUFeatureRegistry shared] featuresMatching:@""
+                                             category:self.selectedCategory];
+
+    self.searchController =
+        [[UISearchController alloc] initWithSearchResultsController:nil];
+    self.searchController.searchResultsUpdater = self;
+    self.searchController.obscuresBackgroundDuringPresentation = NO;
+    self.searchController.automaticallyShowsCancelButton = YES;
+    self.navigationItem.searchController = self.searchController;
+    self.definesPresentationContext = YES;
+
+    // Style the native search field as a translucent glass capsule.
+    UISearchBar *searchBar = self.searchController.searchBar;
+    searchBar.searchBarStyle = UISearchBarStyleMinimal;
+    searchBar.translucent = YES;
+    searchBar.tintColor = UIColor.labelColor;
+    searchBar.barTintColor = UIColor.clearColor;
+    searchBar.backgroundColor = UIColor.clearColor;
+    searchBar.layer.cornerRadius = 16.0;
+    searchBar.clipsToBounds = YES;
+    UITextField *searchField = [searchBar valueForKey:@"searchField"];
+    if ([searchField isKindOfClass:UITextField.class]) {
+        searchField.backgroundColor =
+            [UIColor.secondarySystemGroupedBackgroundColor colorWithAlphaComponent:0.32];
+        searchField.textColor = UIColor.labelColor;
+        searchField.tintColor = UIColor.labelColor;
+        searchField.layer.cornerRadius = 13.0;
+        searchField.clipsToBounds = YES;
+        searchField.borderStyle = UITextBorderStyleNone;
+    }
+
+    self.navigationItem.rightBarButtonItem =
+        [[UIBarButtonItem alloc] initWithTitle:@"å·¥å·"
+                                         style:UIBarButtonItemStylePlain
+                                        target:self
+                                        action:@selector(showTools)];
+
+    [self.tableView registerClass:KDUFeatureTableCell.class
+           forCellReuseIdentifier:@"FeatureCell"];
+
+    self.tableView.rowHeight = UITableViewAutomaticDimension;
+    self.tableView.estimatedRowHeight = 74;
+    self.tableView.keyboardDismissMode = UIScrollViewKeyboardDismissModeOnDrag;
+}
+
+- (void)refreshVisible {
+    self.visibleFeatures =
+        [[KDUFeatureRegistry shared]
+            featuresMatching:self.searchController.searchBar.text ?: @""
+                    category:self.selectedCategory];
+
+    [self.tableView reloadData];
+}
+
+- (void)updateSearchResultsForSearchController:
+    (UISearchController *)searchController {
+    [self refreshVisible];
+}
+
+- (NSInteger)numberOfSectionsInTableView:(UITableView *)tableView {
+    return 2;
+}
+
+- (NSInteger)tableView:(UITableView *)tableView
+ numberOfRowsInSection:(NSInteger)section {
+    return section == 0 ? 1 : self.visibleFeatures.count;
+}
+
+- (NSString *)tableView:(UITableView *)tableView
+ titleForHeaderInSection:(NSInteger)section {
+    return section == 0
+        ? @"åè½åç±»"
+        : @"åè½åè¡¨ Â· æ è®°ä¸ºâå¾å®ç°âçé¡¹ç®å½åä»ä¿å­å¼å³";
+}
+
+- (UITableViewCell *)tableView:(UITableView *)tableView
+         cellForRowAtIndexPath:(NSIndexPath *)indexPath {
+    UITableViewCell *cell =
+        [tableView dequeueReusableCellWithIdentifier:@"FeatureCell"
+                                        forIndexPath:indexPath];
+
+    cell.accessoryView = nil;
+    cell.accessoryType = UITableViewCellAccessoryNone;
+    cell.selectionStyle = indexPath.section == 0
+        ? UITableViewCellSelectionStyleDefault
+        : UITableViewCellSelectionStyleNone;
+    cell.contentView.layoutMargins = UIEdgeInsetsMake(10, 14, 10, 14);
+
+    if (indexPath.section == 0) {
+        cell.textLabel.text =
+            [NSString stringWithFormat:@"åç±»ï¼%@", self.selectedCategory];
+        cell.textLabel.textColor = UIColor.labelColor;
+        cell.detailTextLabel.text = @"è½»ç¹åæ¢åè½åç±»";
+        cell.accessoryType = UITableViewCellAccessoryDisclosureIndicator;
+        return cell;
+    }
+
+    KDUFeature *feature = self.visibleFeatures[indexPath.row];
+
+    cell.textLabel.text =
+        [NSString stringWithFormat:@"%@ Â· %@",
+            feature.title,
+            feature.implemented ? @"å·²å®ç°" : @"å¾å®ç°"];
+
+    cell.textLabel.textColor = feature.implemented
+        ? UIColor.labelColor
+        : UIColor.secondaryLabelColor;
+    cell.detailTextLabel.text = feature.detail;
+
+    UISwitch *toggle = [UISwitch new];
+    toggle.onTintColor = [UIColor colorWithRed:0.22 green:0.62 blue:0.98 alpha:0.92];
+    toggle.tintColor = [UIColor tertiaryLabelColor];
+    if (@available(iOS 13.0, *)) {
+        toggle.backgroundColor = UIColor.clearColor;
+    }
+    toggle.on = [[KDUConfigManager shared]
+        boolForKey:feature.configKey
+          fallback:feature.defaultEnabled];
+    toggle.accessibilityLabel = feature.title;
+    toggle.tag = indexPath.row;
+    [toggle addTarget:self
+               action:@selector(toggleChanged:)
+     forControlEvents:UIControlEventValueChanged];
+
+    cell.accessoryView = toggle;
+    return cell;
+}
+
+- (void)tableView:(UITableView *)tableView
+didSelectRowAtIndexPath:(NSIndexPath *)indexPath {
+    if (indexPath.section != 0 || self.categories.count == 0) {
         return;
     }
 
-    for (UIScene *scene in UIApplication.sharedApplication.connectedScenes) {
-        if (![scene isKindOfClass:UIWindowScene.class] ||
-            scene.activationState != UISceneActivationStateForegroundActive) continue;
+    NSUInteger current =
+        [self.categories indexOfObject:self.selectedCategory];
+    NSUInteger next =
+        (current == NSNotFound ? 0 : (current + 1) % self.categories.count);
 
-        for (UIWindow *window in ((UIWindowScene *)scene).windows) {
-            if (window.hidden || window.alpha < 0.01 || !window.rootViewController) continue;
-            [self inspectController:window.rootViewController];
+    self.selectedCategory = self.categories[next];
+    [self refreshVisible];
+    [tableView deselectRowAtIndexPath:indexPath animated:YES];
+}
+
+- (void)toggleChanged:(UISwitch *)sender {
+    if (sender.tag < 0 || sender.tag >= self.visibleFeatures.count) {
+        return;
+    }
+
+    KDUFeature *feature = self.visibleFeatures[sender.tag];
+    [[KDUConfigManager shared] setBool:sender.isOn
+                                forKey:feature.configKey];
+}
+
+- (void)showTools {
+    UIAlertController *alert =
+        [UIAlertController alertControllerWithTitle:@"K-Douyin Ultra å·¥å·"
+                                            message:@"è¯·éæ©è¦æ§è¡çæä½ã"
+                                     preferredStyle:UIAlertControllerStyleActionSheet];
+
+    [alert addAction:
+        [UIAlertAction actionWithTitle:@"å¯¼åºéç½® JSON"
+                                 style:UIAlertActionStyleDefault
+                               handler:^(__unused UIAlertAction *action) {
+        NSData *data =
+            [[KDUConfigManager shared] exportFeatureConfigJSON];
+        if (!data) {
+            return;
         }
-    }
-}
 
-+ (void)inspectController:(UIViewController *)controller {
-    if (!controller) return;
-    [self addEntryIfSettingsController:controller];
+        NSString *path =
+            [NSTemporaryDirectory()
+                stringByAppendingPathComponent:@"K-Douyin-Ultra-config.json"];
 
-    // Visit each controller once per initial scan. Avoid scanning the same navigation/tab
-    // children twice through both childViewControllers and container-specific arrays.
-    if ([controller isKindOfClass:UINavigationController.class]) {
-        for (UIViewController *child in ((UINavigationController *)controller).viewControllers) {
-            [self inspectController:child];
+        if (![data writeToFile:path atomically:YES]) {
+            return;
         }
-    } else if ([controller isKindOfClass:UITabBarController.class]) {
-        for (UIViewController *child in ((UITabBarController *)controller).viewControllers) {
-            [self inspectController:child];
+
+        UIActivityViewController *share =
+            [[UIActivityViewController alloc]
+                initWithActivityItems:@[[NSURL fileURLWithPath:path]]
+                applicationActivities:nil];
+
+        if (UI_USER_INTERFACE_IDIOM() == UIUserInterfaceIdiomPad) {
+            share.popoverPresentationController.barButtonItem =
+                self.navigationItem.rightBarButtonItem;
         }
-    } else {
-        for (UIViewController *child in controller.childViewControllers) {
-            [self inspectController:child];
-        }
+
+        [self presentViewController:share animated:YES completion:nil];
+    }]];
+
+    [alert addAction:
+        [UIAlertAction actionWithTitle:@"ç¯å¢è¯æ­"
+                                 style:UIAlertActionStyleDefault
+                               handler:^(__unused UIAlertAction *action) {
+        NSDictionary *d = [[KDUCompatibility shared] diagnostics];
+
+        NSString *message =
+            [NSString stringWithFormat:
+                @"åºç¨æ è¯ï¼%@\nåºç¨çæ¬ï¼%@ (%@)\niOS çæ¬ï¼%@\nç¶æï¼%@",
+                d[@"bundleIdentifier"],
+                d[@"appVersion"],
+                d[@"appBuild"],
+                d[@"systemVersion"],
+                d[@"status"]];
+
+        UIAlertController *diag =
+            [UIAlertController alertControllerWithTitle:@"ç¯å¢è¯æ­"
+                                                message:message
+                                         preferredStyle:UIAlertControllerStyleAlert];
+
+        [diag addAction:
+            [UIAlertAction actionWithTitle:@"å³é­"
+                                     style:UIAlertActionStyleCancel
+                                   handler:nil]];
+
+        [self presentViewController:diag animated:YES completion:nil];
+    }]];
+
+    [alert addAction:
+        [UIAlertAction actionWithTitle:@"éç½®å¨é¨å¼å³"
+                                 style:UIAlertActionStyleDestructive
+                               handler:^(__unused UIAlertAction *action) {
+        [[KDUConfigManager shared] resetToDefaults];
+        [self refreshVisible];
+    }]];
+
+    [alert addAction:
+        [UIAlertAction actionWithTitle:@"åæ¶"
+                                 style:UIAlertActionStyleCancel
+                               handler:nil]];
+
+    if (UI_USER_INTERFACE_IDIOM() == UIUserInterfaceIdiomPad) {
+        alert.popoverPresentationController.barButtonItem =
+            self.navigationItem.rightBarButtonItem;
     }
 
-    if (controller.presentedViewController) {
-        [self inspectController:controller.presentedViewController];
-    }
-}
-
-+ (void)addEntryIfSettingsController:(UIViewController *)controller {
-    if ([controller isKindOfClass:KDUSettingsController.class] ||
-        !controller.isViewLoaded || !controller.view.window) return;
-
-    // Fast path: once our entry is in the table header, don't traverse the view again.
-    UITableView *table = [self findTableView:controller.view depth:0];
-    if (!table || [table.tableHeaderView viewWithTag:KDUSettingsEntryTag]) return;
-
-    NSMutableString *visibleText = [NSMutableString string];
-    [self collectTextFromView:controller.view into:visibleText depth:0];
-    NSArray<NSString *> *markers = @[
-    @"账号与安全",
-    @"通用设置",
-    @"隐私政策",
-    @"应用权限",
-    @"个人信息管理",
-    @"用户协议",
-    @"个人信息收集清单",
-    @"第三方信息共享清单",
-    @"设置"
-];
-   
-
-    BOOL matched = NO;
-    for (NSString *marker in markers) {
-        if ([visibleText containsString:marker]) {
-            matched = YES;
-            break;
-        }
-    }
-    if (!matched) return;
-
-    UIView *oldHeader = table.tableHeaderView;
-    CGFloat oldHeight = oldHeader ? MAX(1.0, CGRectGetHeight(oldHeader.frame)) : 0.0;
-    CGFloat tableWidth = CGRectGetWidth(table.bounds);
-    if (tableWidth <= 0) tableWidth = CGRectGetWidth(controller.view.bounds);
-    if (tableWidth <= 0) return;
-
-    UIView *container = [[UIView alloc] initWithFrame:CGRectMake(0, 0, tableWidth, 62.0 + oldHeight)];
-    container.backgroundColor = UIColor.clearColor;
-
-    UIButton *entry = [UIButton buttonWithType:UIButtonTypeSystem];
-    entry.tag = KDUSettingsEntryTag;
-    entry.frame = CGRectMake(16, 7, MAX(0, tableWidth - 32), 48);
-    entry.autoresizingMask = UIViewAutoresizingFlexibleWidth;
-    entry.backgroundColor = [UIColor secondarySystemBackgroundColor];
-    entry.layer.cornerRadius = 12;
-    entry.contentHorizontalAlignment = UIControlContentHorizontalAlignmentLeft;
-    entry.contentEdgeInsets = UIEdgeInsetsMake(0, 16, 0, 16);
-    [entry setTitle:@"K-Douyin Ultra" forState:UIControlStateNormal];
-    [entry setTitleColor:UIColor.labelColor forState:UIControlStateNormal];
-    entry.titleLabel.font = [UIFont systemFontOfSize:16 weight:UIFontWeightSemibold];
-    [entry addTarget:self action:@selector(openPluginSettings:) forControlEvents:UIControlEventTouchUpInside];
-    [container addSubview:entry];
-
-    if (oldHeader) {
-        oldHeader.frame = CGRectMake(0, 62.0, tableWidth, oldHeight);
-        oldHeader.autoresizingMask |= UIViewAutoresizingFlexibleWidth;
-        [container addSubview:oldHeader];
-    }
-
-    table.tableHeaderView = container;
-}
-
-+ (void)collectTextFromView:(UIView *)view into:(NSMutableString *)result depth:(NSUInteger)depth {
-    if (!view || depth > 12 || view.hidden || view.alpha < 0.05) return;
-
-    if ([view isKindOfClass:UILabel.class]) {
-        NSString *text = ((UILabel *)view).text;
-        if (text.length) [result appendFormat:@" %@", text];
-    } else if ([view isKindOfClass:UIButton.class]) {
-        NSString *text = ((UIButton *)view).currentTitle;
-        if (text.length) [result appendFormat:@" %@", text];
-    }
-
-    for (UIView *child in view.subviews) {
-        [self collectTextFromView:child into:result depth:depth + 1];
-    }
-}
-
-+ (UITableView *)findTableView:(UIView *)view depth:(NSUInteger)depth {
-    if (!view || depth > 12) return nil;
-    if ([view isKindOfClass:UITableView.class]) return (UITableView *)view;
-
-    for (UIView *child in view.subviews) {
-        UITableView *found = [self findTableView:child depth:depth + 1];
-        if (found) return found;
-    }
-    return nil;
-}
-
-+ (void)openPluginSettings:(UIButton *)sender {
-    UIWindow *window = sender.window;
-    UIViewController *top = [self topController:window.rootViewController];
-    if (!top || [top isKindOfClass:KDUSettingsController.class] || top.presentedViewController) return;
-
-    UINavigationController *nav = [[UINavigationController alloc] initWithRootViewController:[KDUSettingsController new]];
-    nav.modalPresentationStyle = UIModalPresentationPageSheet;
-    [top presentViewController:nav animated:YES completion:nil];
-}
-
-+ (UIViewController *)topController:(UIViewController *)controller {
-    if (!controller) return nil;
-    if (controller.presentedViewController) return [self topController:controller.presentedViewController];
-    if ([controller isKindOfClass:UINavigationController.class]) {
-        return [self topController:((UINavigationController *)controller).visibleViewController];
-    }
-    if ([controller isKindOfClass:UITabBarController.class]) {
-        return [self topController:((UITabBarController *)controller).selectedViewController];
-    }
-    return controller;
-}
-
-@end
-
-@implementation UIViewController (KDUSettingsIntegration)
-
-- (void)kdu_viewDidAppear:(BOOL)animated {
-    [self kdu_viewDidAppear:animated];
-
-    dispatch_async(dispatch_get_main_queue(), ^{
-        [KDUSettingsIntegration scanForSettingsPage];
-    });
+    [self presentViewController:alert animated:YES completion:nil];
 }
 
 @end
