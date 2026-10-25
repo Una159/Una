@@ -1,0 +1,9 @@
+Package: com.kduy.kdouyinultra
+Name: K-Douyin Ultra
+Version: 0.1.0
+Architecture: iphoneos-arm
+Description: Modular Douyin UI enhancement starter (shared source).
+Maintainer: K-Douyin Ultra
+Author: K-Douyin Ultra
+Section: Tweaks
+Depends: mobilesubstrate
