@@ -6,7 +6,7 @@
 
 @implementation KDUSettingsIntegration
 
-static char KDUSettingsEntryAddedKey;
+
 
 + (void)installHooks {
     dispatch_async(dispatch_get_main_queue(), ^{
