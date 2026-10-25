@@ -9,6 +9,15 @@ static const NSInteger KDUSettingsEntryTag = 0x4B445532;
 - (void)kdu_viewDidAppear:(BOOL)animated;
 @end
 
+@interface KDUSettingsIntegration ()
++ (void)inspectController:(UIViewController *)controller;
++ (void)addEntryIfSettingsController:(UIViewController *)controller;
++ (void)collectTextFromView:(UIView *)view into:(NSMutableString *)result depth:(NSUInteger)depth;
++ (UITableView *)findTableView:(UIView *)view depth:(NSUInteger)depth;
++ (void)openPluginSettings:(UIButton *)sender;
++ (UIViewController *)topController:(UIViewController *)controller;
+@end
+
 @implementation KDUSettingsIntegration
 
 + (void)installHooks {
@@ -21,6 +30,7 @@ static const NSInteger KDUSettingsEntryTag = 0x4B445532;
         }
     });
 
+    // One initial scan handles a settings page that is already visible at injection time.
     dispatch_async(dispatch_get_main_queue(), ^{
         [self scanForSettingsPage];
     });
@@ -36,9 +46,7 @@ static const NSInteger KDUSettingsEntryTag = 0x4B445532;
 
     for (UIScene *scene in UIApplication.sharedApplication.connectedScenes) {
         if (![scene isKindOfClass:UIWindowScene.class] ||
-            scene.activationState != UISceneActivationStateForegroundActive) {
-            continue;
-        }
+            scene.activationState != UISceneActivationStateForegroundActive) continue;
 
         for (UIWindow *window in ((UIWindowScene *)scene).windows) {
             if (window.hidden || window.alpha < 0.01 || !window.rootViewController) continue;
@@ -49,22 +57,24 @@ static const NSInteger KDUSettingsEntryTag = 0x4B445532;
 
 + (void)inspectController:(UIViewController *)controller {
     if (!controller) return;
-
     [self addEntryIfSettingsController:controller];
 
-    for (UIViewController *child in controller.childViewControllers) {
-        [self inspectController:child];
-    }
+    // Visit each controller once per initial scan. Avoid scanning the same navigation/tab
+    // children twice through both childViewControllers and container-specific arrays.
     if ([controller isKindOfClass:UINavigationController.class]) {
         for (UIViewController *child in ((UINavigationController *)controller).viewControllers) {
             [self inspectController:child];
         }
-    }
-    if ([controller isKindOfClass:UITabBarController.class]) {
+    } else if ([controller isKindOfClass:UITabBarController.class]) {
         for (UIViewController *child in ((UITabBarController *)controller).viewControllers) {
             [self inspectController:child];
         }
+    } else {
+        for (UIViewController *child in controller.childViewControllers) {
+            [self inspectController:child];
+        }
     }
+
     if (controller.presentedViewController) {
         [self inspectController:controller.presentedViewController];
     }
@@ -72,25 +82,24 @@ static const NSInteger KDUSettingsEntryTag = 0x4B445532;
 
 + (void)addEntryIfSettingsController:(UIViewController *)controller {
     if ([controller isKindOfClass:KDUSettingsController.class] ||
-        !controller.isViewLoaded || !controller.view.window) {
-        return;
-    }
+        !controller.isViewLoaded || !controller.view.window) return;
+
+    // Fast path: once our entry is in the table header, don't traverse the view again.
+    UITableView *table = [self findTableView:controller.view depth:0];
+    if (!table || [table.tableHeaderView viewWithTag:KDUSettingsEntryTag]) return;
 
     NSMutableString *visibleText = [NSMutableString string];
     [self collectTextFromView:controller.view into:visibleText depth:0];
-
-    // Use specific labels only. A generic "è®¾ç½®" marker can match unrelated pages.
     NSArray<NSString *> *markers = @[
-    @"账号与安全",
-    @"通用设置",
-    @"隐私政策",
-    @"应用权限",
-    @"个人信息管理",
-    @"用户协议",
-    @"个人信息收集清单",
-    @"第三方信息共享清单"
-];
-        
+        @"è´¦å·ä¸å®å¨",
+        @"éç¨è®¾ç½®",
+        @"éç§æ¿ç­",
+        @"åºç¨æé",
+        @"ä¸ªäººä¿¡æ¯ç®¡ç",
+        @"ç¨æ·åè®®",
+        @"ä¸ªäººä¿¡æ¯æ¶éæ¸å",
+        @"ç¬¬ä¸æ¹ä¿¡æ¯å±äº«æ¸å"
+    ];
 
     BOOL matched = NO;
     for (NSString *marker in markers) {
@@ -100,10 +109,6 @@ static const NSInteger KDUSettingsEntryTag = 0x4B445532;
         }
     }
     if (!matched) return;
-
-    UITableView *table = [self findTableView:controller.view depth:0];
-    if (!table) return;
-    if ([table.tableHeaderView viewWithTag:KDUSettingsEntryTag]) return;
 
     UIView *oldHeader = table.tableHeaderView;
     CGFloat oldHeight = oldHeader ? MAX(1.0, CGRectGetHeight(oldHeader.frame)) : 0.0;
@@ -190,9 +195,13 @@ static const NSInteger KDUSettingsEntryTag = 0x4B445532;
 
 @implementation UIViewController (KDUSettingsIntegration)
 - (void)kdu_viewDidAppear:(BOOL)animated {
+    // Swizzled implementation calls the original implementation first.
     [self kdu_viewDidAppear:animated];
+
+    // Only inspect the controller that just appeared. Do not recursively scan every window
+    // after every viewDidAppear; that repeated whole-app traversal caused avoidable lag.
     dispatch_async(dispatch_get_main_queue(), ^{
-        [KDUSettingsIntegration scanForSettingsPage];
+        [KDUSettingsIntegration addEntryIfSettingsController:self];
     });
 }
 @end
