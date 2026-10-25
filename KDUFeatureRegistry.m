@@ -22,7 +22,11 @@
         NSArray<NSDictionary *> *items = @[
           @{@"id":@"video.hideWatermarkButton",@"title":@"隐藏水印按钮",@"detail":@"界面元素开关占位，不会修改视频文件。",@"category":@"视频",@"implemented":@NO},
           @{@"id":@"download.enabled",@"title":@"视频保存模块",@"detail":@"下载流程待实现；当前只保存设置。",@"category":@"下载",@"implemented":@NO},
-          @{@"id":@"interface.liquidGlass",@"title":@"液态玻璃主题",@"detail":@"主题效果待接入具体页面。",@"category":@"界面",@"implemented":@NO},
+          @{@"id":@"interface.liquidGlass",
+  @"title":@"液态玻璃主题",
+  @"detail":@"控制设置页的玻璃模糊、透明卡片、边框和阴影效果。",
+  @"category":@"界面",
+  @"implemented":@YES},
           @{@"id":@"interface.hideShopEntry",@"title":@"隐藏商城入口",@"detail":@"需要对目标版本界面节点进行验证。",@"category":@"界面",@"implemented":@NO},
           @{@"id":@"privacy.reduceTrackingUI",@"title":@"减少干扰界面",@"detail":@"当前为配置占位，不会拦截网络请求。",@"category":@"隐私",@"implemented":@NO},
           @{@"id":@"comments.localAudioPicker",@"title":@"评论本地音频选择",@"detail":@"本地音频选择与发送流程待实现。",@"category":@"评论",@"implemented":@NO},
