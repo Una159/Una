@@ -102,7 +102,7 @@
         return cell;
     }
     KDUFeature *feature = self.visibleFeatures[indexPath.row];
-    cell.textLabel.text = [NSString stringWithFormat:@"%@  Â·  %@", feature.title, feature.implemented ? @"å·²å®ç°" : @"å¾å®ç°"];
+    cell.textLabel.text = [NSString stringWithFormat:@"%@ Â· %@", feature.title, feature.implemented ? @"å·²å®ç°" : @"å¾å®ç°"];
     cell.textLabel.textColor = feature.implemented ? UIColor.labelColor : UIColor.secondaryLabelColor;
     cell.detailTextLabel.text = feature.detail;
     UISwitch *toggle = [UISwitch new];
