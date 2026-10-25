@@ -19,25 +19,34 @@ jobs:
       - name: Checkout source
         uses: actions/checkout@v4
 
-      - name: Install Theos
+            - name: Install Theos
         shell: bash
+        env:
+          THEOS: ${{ github.workspace }}/theos
         run: |
           set -euo pipefail
-          export THEOS="$GITHUB_WORKSPACE/theos"
-
           brew install ldid xz
-          bash -c "$(curl -fsSL https://raw.githubusercontent.com/theos/theos/master/bin/install-theos)"
+          git clone --recursive https://github.com/theos/theos.git "$THEOS"
+          mkdir -p "$THEOS/sdks"
 
-          if [ ! -d "$THEOS" ]; then
-            echo "ERROR: Theos installation failed: $THEOS not found"
-            exit 1
-          fi
+          TMP_DIR="$(mktemp -d)"
+          trap 'rm -rf "$TMP_DIR"' EXIT
+
+          curl --retry 3 --retry-delay 2 -fL \
+            https://codeload.github.com/theos/sdks/zip/refs/heads/master \
+            -o "$TMP_DIR/sdks.zip"
+
+          unzip -q "$TMP_DIR/sdks.zip" -d "$TMP_DIR"
+
+          find "$TMP_DIR/sdks-master" -mindepth 1 -maxdepth 1 \
+            -type d -name '*.sdk' \
+            -exec mv {} "$THEOS/sdks/" \;
 
           echo "THEOS=$THEOS" >> "$GITHUB_ENV"
-          echo "Theos directory:"
-          ls -la "$THEOS"
-          echo "SDK directory:"
+          echo "Installed SDKs:"
           ls -la "$THEOS/sdks"
+
+          test -n "$(find "$THEOS/sdks" -maxdepth 1 -type d -name '*.sdk' -print -quit)"
 
       - name: Check project files
         shell: bash
