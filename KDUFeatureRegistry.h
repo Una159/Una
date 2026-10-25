@@ -1,5 +1,4 @@
 #import <Foundation/Foundation.h>
-
 NS_ASSUME_NONNULL_BEGIN
 @interface KDUFeature : NSObject
 @property (nonatomic, copy) NSString *identifier;
@@ -10,11 +9,11 @@ NS_ASSUME_NONNULL_BEGIN
 @property (nonatomic, assign) BOOL defaultEnabled;
 @property (nonatomic, assign) BOOL implemented;
 @end
-
 @interface KDUFeatureRegistry : NSObject
 + (instancetype)shared;
 - (void)registerBuiltInFeatures;
 - (NSArray<KDUFeature *> *)allFeatures;
-- (NSArray<KDUFeature *> *)featuresMatching:(NSString *)query;
+- (NSArray<KDUFeature *> *)featuresMatching:(NSString *)query category:(nullable NSString *)category;
+- (NSArray<NSString *> *)categories;
 @end
 NS_ASSUME_NONNULL_END

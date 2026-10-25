@@ -1,6 +1,5 @@
 #import "KDUCompatibility.h"
 #import <UIKit/UIKit.h>
-
 @implementation KDUCompatibility {
     NSDictionary *_lastDiagnostics;
 }
@@ -11,14 +10,12 @@
     return instance;
 }
 - (void)refreshDiagnostics {
-    NSString *version = [NSBundle.mainBundle objectForInfoDictionaryKey:@"CFBundleShortVersionString"] ?: @"unknown";
-    NSString *build = [NSBundle.mainBundle objectForInfoDictionaryKey:@"CFBundleVersion"] ?: @"unknown";
     _lastDiagnostics = @{
         @"bundleIdentifier": NSBundle.mainBundle.bundleIdentifier ?: @"unknown",
-        @"appVersion": version,
-        @"appBuild": build,
+        @"appVersion": [NSBundle.mainBundle objectForInfoDictionaryKey:@"CFBundleShortVersionString"] ?: @"unknown",
+        @"appBuild": [NSBundle.mainBundle objectForInfoDictionaryKey:@"CFBundleVersion"] ?: @"unknown",
         @"systemVersion": UIDevice.currentDevice.systemVersion ?: @"unknown",
-        @"status": @"diagnostics-only; compatibility not yet certified"
+        @"status": @"scaffold only; target-version hooks not certified"
     };
 }
 - (NSDictionary *)diagnostics {

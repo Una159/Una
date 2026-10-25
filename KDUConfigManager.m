@@ -1,9 +1,16 @@
 #import "KDUConfigManager.h"
 
 static NSString * const KDUDefaultsLoadedKey = @"kdu.defaults.loaded";
+static NSArray<NSString *> *KDUFeatureKeys(void) {
+    return @[
+        @"video.hideWatermarkButton", @"download.enabled",
+        @"interface.liquidGlass", @"interface.hideShopEntry",
+        @"privacy.reduceTrackingUI", @"comments.localAudioPicker",
+        @"messages.quickReply", @"live.compactControls"
+    ];
+}
 
 @implementation KDUConfigManager
-
 + (instancetype)shared {
     static KDUConfigManager *instance;
     static dispatch_once_t onceToken;
@@ -14,7 +21,6 @@ static NSString * const KDUDefaultsLoadedKey = @"kdu.defaults.loaded";
 - (void)loadDefaultsIfNeeded {
     NSUserDefaults *defaults = NSUserDefaults.standardUserDefaults;
     if ([defaults boolForKey:KDUDefaultsLoadedKey]) return;
-
     NSDictionary *initial = @{
         @"video.hideWatermarkButton": @NO,
         @"download.enabled": @NO,
@@ -29,7 +35,6 @@ static NSString * const KDUDefaultsLoadedKey = @"kdu.defaults.loaded";
         if ([defaults objectForKey:key] == nil) [defaults setObject:value forKey:key];
     }];
     [defaults setBool:YES forKey:KDUDefaultsLoadedKey];
-    [defaults synchronize];
 }
 
 - (BOOL)boolForKey:(NSString *)key fallback:(BOOL)fallback {
@@ -41,19 +46,28 @@ static NSString * const KDUDefaultsLoadedKey = @"kdu.defaults.loaded";
     [NSUserDefaults.standardUserDefaults setBool:value forKey:key];
 }
 
-- (NSDictionary<NSString *,id> *)allValues {
-    return NSUserDefaults.standardUserDefaults.dictionaryRepresentation;
+- (NSDictionary<NSString *,id> *)featureValues {
+    [self loadDefaultsIfNeeded];
+    NSMutableDictionary *values = [NSMutableDictionary dictionary];
+    NSUserDefaults *defaults = NSUserDefaults.standardUserDefaults;
+    for (NSString *key in KDUFeatureKeys()) {
+        values[key] = @([defaults boolForKey:key]);
+    }
+    return values;
+}
+
+- (NSData *)exportFeatureConfigJSON {
+    NSDictionary *payload = @{
+        @"schemaVersion": @1,
+        @"plugin": @"K-Douyin Ultra",
+        @"features": [self featureValues]
+    };
+    return [NSJSONSerialization dataWithJSONObject:payload options:NSJSONWritingPrettyPrinted error:nil];
 }
 
 - (void)resetToDefaults {
     NSUserDefaults *defaults = NSUserDefaults.standardUserDefaults;
-    NSArray *keys = @[
-        @"video.hideWatermarkButton", @"download.enabled",
-        @"interface.liquidGlass", @"interface.hideShopEntry",
-        @"privacy.reduceTrackingUI", @"comments.localAudioPicker",
-        @"messages.quickReply", @"live.compactControls"
-    ];
-    for (NSString *key in keys) [defaults removeObjectForKey:key];
+    for (NSString *key in KDUFeatureKeys()) [defaults removeObjectForKey:key];
     [defaults removeObjectForKey:KDUDefaultsLoadedKey];
     [self loadDefaultsIfNeeded];
 }
