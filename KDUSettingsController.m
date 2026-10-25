@@ -39,7 +39,9 @@
     self.tableView.backgroundColor = UIColor.clearColor;
     self.tableView.separatorStyle = UITableViewCellSeparatorStyleNone;
     self.tableView.contentInset = UIEdgeInsetsMake(6, 0, 18, 0);
+    if (@available(iOS 15.0, *)) {
     self.tableView.sectionHeaderTopPadding = 8.0;
+}
     self.navigationController.navigationBar.tintColor = UIColor.labelColor;
     if (@available(iOS 13.0, *)) {
         self.navigationController.navigationBar.prefersLargeTitles = YES;
