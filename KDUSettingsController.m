@@ -1,7 +1,7 @@
 #import "KDUSettingsController.h"
-#import "../Core/KDUFeatureRegistry.h"
-#import "../Core/KDUConfigManager.h"
-#import "../Core/KDUCompatibility.h"
+#import "KDUFeatureRegistry.h"
+#import "KDUConfigManager.h"
+#import "KDUCompatibility.h"
 
 @interface KDUSettingsController () <UISearchResultsUpdating>
 @property (nonatomic, strong) UISearchController *searchController;
