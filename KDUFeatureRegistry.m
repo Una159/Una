@@ -58,10 +58,10 @@
     for (KDUFeature *f in [self allFeatures]) {
         BOOL categoryMatches = !category.length || [category isEqualToString:@"全部"] || [f.category isEqualToString:category];
         BOOL queryMatches = !q.length ||
-            [f.title.localizedCaseInsensitiveContainsString:q] ||
-            [f.detail.localizedCaseInsensitiveContainsString:q] ||
-            [f.category.localizedCaseInsensitiveContainsString:q] ||
-            [f.identifier.localizedCaseInsensitiveContainsString:q];
+            [f.title rangeOfString:q options:NSCaseInsensitiveSearch].location != NSNotFound ||
+[f.detail rangeOfString:q options:NSCaseInsensitiveSearch].location != NSNotFound ||
+[f.category rangeOfString:q options:NSCaseInsensitiveSearch].location != NSNotFound ||
+[f.identifier rangeOfString:q options:NSCaseInsensitiveSearch].location != NSNotFound
         if (categoryMatches && queryMatches) [matches addObject:f];
     }
     return matches;
