@@ -1,12 +1,15 @@
+
+
 name: Build K-Douyin Ultra
 
 on:
   workflow_dispatch:
   push:
-  branches:
-    - main
-    - master
-    - integration-pass1-1-1-2
+    branches:
+      - main
+      - master
+      - integration-pass1-1-1-2
+
 permissions:
   contents: read
 
