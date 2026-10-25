@@ -1,4 +1,3 @@
-
 #import "KDUSettingsController.h"
 #import "KDUFeatureRegistry.h"
 #import "KDUConfigManager.h"
@@ -76,7 +75,7 @@
     self.navigationController.navigationBar.prefersLargeTitles = YES;
 
     self.categories = [[KDUFeatureRegistry shared] categories];
-    self.selectedCategory = @"全部";
+    self.selectedCategory = @"å¨é¨";
     self.visibleFeatures =
         [[KDUFeatureRegistry shared] featuresMatching:@""
                                              category:self.selectedCategory];
@@ -89,7 +88,7 @@
     self.definesPresentationContext = YES;
 
     self.navigationItem.rightBarButtonItem =
-        [[UIBarButtonItem alloc] initWithTitle:@"工具"
+        [[UIBarButtonItem alloc] initWithTitle:@"å·¥å·"
                                          style:UIBarButtonItemStylePlain
                                         target:self
                                         action:@selector(showTools)];
@@ -128,8 +127,8 @@
 - (NSString *)tableView:(UITableView *)tableView
  titleForHeaderInSection:(NSInteger)section {
     return section == 0
-        ? @"功能分类"
-        : @"功能列表 · 标记为“待实现”的项目当前仅保存开关";
+        ? @"åè½åç±»"
+        : @"åè½åè¡¨ Â· æ è®°ä¸ºâå¾å®ç°âçé¡¹ç®å½åä»ä¿å­å¼å³";
 }
 
 - (UITableViewCell *)tableView:(UITableView *)tableView
@@ -147,9 +146,9 @@
 
     if (indexPath.section == 0) {
         cell.textLabel.text =
-            [NSString stringWithFormat:@"分类：%@", self.selectedCategory];
+            [NSString stringWithFormat:@"åç±»ï¼%@", self.selectedCategory];
         cell.textLabel.textColor = UIColor.labelColor;
-        cell.detailTextLabel.text = @"轻点切换功能分类";
+        cell.detailTextLabel.text = @"è½»ç¹åæ¢åè½åç±»";
         cell.accessoryType = UITableViewCellAccessoryDisclosureIndicator;
         return cell;
     }
@@ -157,9 +156,9 @@
     KDUFeature *feature = self.visibleFeatures[indexPath.row];
 
     cell.textLabel.text =
-        [NSString stringWithFormat:@"%@ · %@",
+        [NSString stringWithFormat:@"%@ Â· %@",
             feature.title,
-            feature.implemented ? @"已实现" : @"待实现"];
+            feature.implemented ? @"å·²å®ç°" : @"å¾å®ç°"];
 
     cell.textLabel.textColor = feature.implemented
         ? UIColor.labelColor
@@ -208,12 +207,12 @@ didSelectRowAtIndexPath:(NSIndexPath *)indexPath {
 
 - (void)showTools {
     UIAlertController *alert =
-        [UIAlertController alertControllerWithTitle:@"K-Douyin Ultra 工具"
-                                            message:@"请选择要执行的操作。"
+        [UIAlertController alertControllerWithTitle:@"K-Douyin Ultra å·¥å·"
+                                            message:@"è¯·éæ©è¦æ§è¡çæä½ã"
                                      preferredStyle:UIAlertControllerStyleActionSheet];
 
     [alert addAction:
-        [UIAlertAction actionWithTitle:@"导出配置 JSON"
+        [UIAlertAction actionWithTitle:@"å¯¼åºéç½® JSON"
                                  style:UIAlertActionStyleDefault
                                handler:^(__unused UIAlertAction *action) {
         NSData *data =
@@ -244,14 +243,14 @@ didSelectRowAtIndexPath:(NSIndexPath *)indexPath {
     }]];
 
     [alert addAction:
-        [UIAlertAction actionWithTitle:@"环境诊断"
+        [UIAlertAction actionWithTitle:@"ç¯å¢è¯æ­"
                                  style:UIAlertActionStyleDefault
                                handler:^(__unused UIAlertAction *action) {
         NSDictionary *d = [[KDUCompatibility shared] diagnostics];
 
         NSString *message =
             [NSString stringWithFormat:
-                @"应用标识：%@\n应用版本：%@ (%@)\niOS 版本：%@\n状态：%@",
+                @"åºç¨æ è¯ï¼%@\nåºç¨çæ¬ï¼%@ (%@)\niOS çæ¬ï¼%@\nç¶æï¼%@",
                 d[@"bundleIdentifier"],
                 d[@"appVersion"],
                 d[@"appBuild"],
@@ -259,12 +258,12 @@ didSelectRowAtIndexPath:(NSIndexPath *)indexPath {
                 d[@"status"]];
 
         UIAlertController *diag =
-            [UIAlertController alertControllerWithTitle:@"环境诊断"
+            [UIAlertController alertControllerWithTitle:@"ç¯å¢è¯æ­"
                                                 message:message
                                          preferredStyle:UIAlertControllerStyleAlert];
 
         [diag addAction:
-            [UIAlertAction actionWithTitle:@"关闭"
+            [UIAlertAction actionWithTitle:@"å³é­"
                                      style:UIAlertActionStyleCancel
                                    handler:nil]];
 
@@ -272,7 +271,7 @@ didSelectRowAtIndexPath:(NSIndexPath *)indexPath {
     }]];
 
     [alert addAction:
-        [UIAlertAction actionWithTitle:@"重置全部开关"
+        [UIAlertAction actionWithTitle:@"éç½®å¨é¨å¼å³"
                                  style:UIAlertActionStyleDestructive
                                handler:^(__unused UIAlertAction *action) {
         [[KDUConfigManager shared] resetToDefaults];
@@ -280,7 +279,7 @@ didSelectRowAtIndexPath:(NSIndexPath *)indexPath {
     }]];
 
     [alert addAction:
-        [UIAlertAction actionWithTitle:@"取消"
+        [UIAlertAction actionWithTitle:@"åæ¶"
                                  style:UIAlertActionStyleCancel
                                handler:nil]];
 
