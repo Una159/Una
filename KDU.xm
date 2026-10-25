@@ -1,8 +1,8 @@
 #import <UIKit/UIKit.h>
-#import "Sources/Core/KDUConfigManager.h"
-#import "Sources/Core/KDUFeatureRegistry.h"
-#import "Sources/Core/KDUCompatibility.h"
-#import "Sources/Settings/KDUFloatingLauncher.h"
+#import "KDUConfigManager.h"
+#import "KDUFeatureRegistry.h"
+#import "KDUCompatibility.h"
+#import "KDUFloatingLauncher.h"
 
 %group KDUAwemeHooks
 %hook UIApplication
