@@ -98,6 +98,8 @@
             initWithSearchResultsController:nil];
 
     self.searchController.searchResultsUpdater = self;
+    self.searchController.searchBar.placeholder = @"搜索全部功能";
+    self.searchController.searchBar.searchBarStyle = UISearchBarStyleMinimal;
     self.searchController.obscuresBackgroundDuringPresentation = NO;
     self.navigationItem.searchController = self.searchController;
     self.definesPresentationContext = YES;
@@ -127,6 +129,19 @@
                     category:self.selectedCategory];
 
     [self.tableView reloadData];
+
+    if (self.visibleFeatures.count == 0) {
+        UILabel *emptyLabel = [[UILabel alloc] initWithFrame:CGRectMake(0, 0, self.tableView.bounds.size.width, 88)];
+        emptyLabel.text = self.searchController.searchBar.text.length
+            ? @"没有找到匹配的功能"
+            : @"当前分类暂无功能";
+        emptyLabel.textColor = UIColor.secondaryLabelColor;
+        emptyLabel.textAlignment = NSTextAlignmentCenter;
+        emptyLabel.font = [UIFont systemFontOfSize:14 weight:UIFontWeightRegular];
+        self.tableView.tableFooterView = emptyLabel;
+    } else {
+        self.tableView.tableFooterView = [UIView new];
+    }
 }
 
 - (void)updateSearchResultsForSearchController:
@@ -194,6 +209,10 @@
     cell.detailTextLabel.text = feature.detail;
 
     UISwitch *toggle = [UISwitch new];
+
+    // 未实现的模块不提供可误触的开关；避免让用户误以为功能已经生效。
+    toggle.enabled = feature.implemented;
+    toggle.alpha = feature.implemented ? 1.0 : 0.55;
 
     toggle.on = [[KDUConfigManager shared]
         boolForKey:feature.configKey
