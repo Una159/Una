@@ -138,12 +138,12 @@
 
     if (@available(iOS 13.0, *)) {
         _fallbackView.backgroundColor =
-            [UIColor secondarySystemGroupedBackgroundColor
-                colorWithAlphaComponent:enabled ? 0.24 : 0.94];
+    [[UIColor secondarySystemGroupedBackgroundColor]
+        colorWithAlphaComponent:(enabled ? 0.24 : 0.94)];
 
         _fallbackView.layer.borderColor =
-            [UIColor.separatorColor
-                colorWithAlphaComponent:enabled ? 0.38 : 0.18].CGColor;
+    [[UIColor separatorColor]
+        colorWithAlphaComponent:(enabled ? 0.38 : 0.18)].CGColor;
 
         _glassView.effect = enabled
             ? [UIBlurEffect effectWithStyle:
