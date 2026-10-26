@@ -1,3 +1,4 @@
+
 #import "KDUSettingsIntegration.h"
 #import "KDUSettingsController.h"
 #import <UIKit/UIKit.h>
@@ -9,29 +10,20 @@ static const NSInteger KDUSettingsEntryTag = 0x4B445532;
 - (void)kdu_viewDidAppear:(BOOL)animated;
 @end
 
-@interface KDUSettingsIntegration ()
-+ (void)scanForSettingsPage;
-+ (void)inspectController:(UIViewController *)controller;
-+ (void)addEntryIfSettingsController:(UIViewController *)controller;
-+ (void)collectTextFromView:(UIView *)view
-                      into:(NSMutableString *)result
-                     depth:(NSUInteger)depth;
-+ (UITableView *)findTableView:(UIView *)view depth:(NSUInteger)depth;
-+ (void)openPluginSettings:(UIButton *)sender;
-+ (UIViewController *)topController:(UIViewController *)controller;
-@end
-
 @implementation KDUSettingsIntegration
 
 + (void)installHooks {
     static dispatch_once_t onceToken;
     dispatch_once(&onceToken, ^{
-        Method original =
-            class_getInstanceMethod(UIViewController.class,
-                                    @selector(viewDidAppear:));
-        Method replacement =
-            class_getInstanceMethod(UIViewController.class,
-                                    @selector(kdu_viewDidAppear:));
+        Method original = class_getInstanceMethod(
+            UIViewController.class,
+            @selector(viewDidAppear:)
+        );
+
+        Method replacement = class_getInstanceMethod(
+            UIViewController.class,
+            @selector(kdu_viewDidAppear:)
+        );
 
         if (original && replacement) {
             method_exchangeImplementations(original, replacement);
@@ -109,15 +101,14 @@ static const NSInteger KDUSettingsEntryTag = 0x4B445532;
     UITableView *table = [self findTableView:controller.view depth:0];
     if (!table) return;
 
-    UIView *existingEntry = [table.tableHeaderView viewWithTag:KDUSettingsEntryTag];
-    if (existingEntry) return;
+    // 避免同一张表重复插入入口。
+    if ([table viewWithTag:KDUSettingsEntryTag]) return;
 
     NSMutableString *visibleText = [NSMutableString string];
     [self collectTextFromView:controller.view
                          into:visibleText
                         depth:0];
 
-    // 使用正常 UTF-8 中文字符串，避免源代码中的乱码导致匹配失败。
     NSArray<NSString *> *markers = @[
         @"账号与安全",
         @"通用设置",
@@ -126,20 +117,19 @@ static const NSInteger KDUSettingsEntryTag = 0x4B445532;
         @"个人信息管理",
         @"用户协议",
         @"个人信息收集清单",
-        @"第三方信息共享清单",
-        @"设置"
+        @"第三方信息共享清单"
     ];
 
-    BOOL matched = NO;
+    NSUInteger matchedMarkerCount = 0;
 
     for (NSString *marker in markers) {
         if ([visibleText containsString:marker]) {
-            matched = YES;
-            break;
+            matchedMarkerCount++;
         }
     }
 
-    if (!matched) return;
+    // 至少命中两个特征，降低误插入其他页面的概率。
+    if (matchedMarkerCount < 2) return;
 
     UIView *oldHeader = table.tableHeaderView;
     CGFloat oldHeight = oldHeader
@@ -165,11 +155,13 @@ static const NSInteger KDUSettingsEntryTag = 0x4B445532;
     entry.autoresizingMask = UIViewAutoresizingFlexibleWidth;
     entry.backgroundColor = UIColor.secondarySystemBackgroundColor;
     entry.layer.cornerRadius = 12.0;
+    entry.clipsToBounds = YES;
     entry.contentHorizontalAlignment = UIControlContentHorizontalAlignmentLeft;
     entry.contentEdgeInsets = UIEdgeInsetsMake(0, 16, 0, 16);
 
     [entry setTitle:@"K-Douyin Ultra" forState:UIControlStateNormal];
-    [entry setTitleColor:UIColor.labelColor forState:UIControlStateNormal];
+    [entry setTitleColor:UIColor.labelColor
+                forState:UIControlStateNormal];
 
     entry.titleLabel.font =
         [UIFont systemFontOfSize:16 weight:UIFontWeightSemibold];
@@ -198,13 +190,11 @@ static const NSInteger KDUSettingsEntryTag = 0x4B445532;
 
     if ([view isKindOfClass:UILabel.class]) {
         NSString *text = ((UILabel *)view).text;
-
         if (text.length) {
             [result appendFormat:@" %@", text];
         }
     } else if ([view isKindOfClass:UIButton.class]) {
         NSString *text = ((UIButton *)view).currentTitle;
-
         if (text.length) {
             [result appendFormat:@" %@", text];
         }
@@ -226,7 +216,6 @@ static const NSInteger KDUSettingsEntryTag = 0x4B445532;
 
     for (UIView *child in view.subviews) {
         UITableView *found = [self findTableView:child depth:depth + 1];
-
         if (found) return found;
     }
 
