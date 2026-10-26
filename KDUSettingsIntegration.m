@@ -6,18 +6,22 @@
 
 static const NSInteger KDUSettingsEntryTag = 0x4B445532;
 
+// 扫描状态只在主线程访问。
+static BOOL KDUScanScheduled = NO;
+static BOOL KDUScanInProgress = NO;
+
 @interface UIViewController (KDUSettingsIntegration)
-- (void)kdu_viewWillAppear:(BOOL)animated;
 - (void)kdu_viewDidAppear:(BOOL)animated;
 @end
 
 @interface KDUSettingsIntegration ()
++ (void)requestScan;
 + (void)scanForSettingsPage;
 + (void)inspectController:(UIViewController *)controller;
 + (void)addEntryIfSettingsController:(UIViewController *)controller;
 + (void)collectTextFromView:(UIView *)view
-                      into:(NSMutableString *)result
-                     depth:(NSUInteger)depth;
+                       into:(NSMutableString *)result
+                      depth:(NSUInteger)depth;
 + (UITableView *)findTableView:(UIView *)view depth:(NSUInteger)depth;
 + (void)openPluginSettings:(UIButton *)sender;
 + (UIViewController *)topController:(UIViewController *)controller;
@@ -25,7 +29,7 @@ static const NSInteger KDUSettingsEntryTag = 0x4B445532;
 
 @implementation KDUSettingsIntegration
 
-#pragma mark - Hook Installation
+#pragma mark - Install One Hook
 
 + (void)installHooks {
     static dispatch_once_t onceToken;
@@ -33,50 +37,70 @@ static const NSInteger KDUSettingsEntryTag = 0x4B445532;
     dispatch_once(&onceToken, ^{
         Class cls = UIViewController.class;
 
-        Method originalWill =
-            class_getInstanceMethod(cls, @selector(viewWillAppear:));
-        Method replacementWill =
-            class_getInstanceMethod(cls, @selector(kdu_viewWillAppear:));
-
-        if (originalWill && replacementWill) {
-            method_exchangeImplementations(originalWill, replacementWill);
-        }
-
-        Method originalDid =
+        Method original =
             class_getInstanceMethod(cls, @selector(viewDidAppear:));
-        Method replacementDid =
+
+        Method replacement =
             class_getInstanceMethod(cls, @selector(kdu_viewDidAppear:));
 
-        if (originalDid && replacementDid) {
-            method_exchangeImplementations(originalDid, replacementDid);
+        if (original && replacement) {
+            method_exchangeImplementations(original, replacement);
         }
     });
 
-    // 首次安装时扫描一次；后续主要在页面即将出现时检查。
-    if (NSThread.isMainThread) {
-        [self scanForSettingsPage];
-    } else {
-        dispatch_async(dispatch_get_main_queue(), ^{
-            [self scanForSettingsPage];
-        });
-    }
+    [self requestScan];
 }
 
-#pragma mark - Scene Scanning
+#pragma mark - Coalesced Scan Request
 
-+ (void)scanForSettingsPage {
++ (void)requestScan {
     if (!NSThread.isMainThread) {
         dispatch_async(dispatch_get_main_queue(), ^{
-            [self scanForSettingsPage];
+            [self requestScan];
         });
         return;
     }
 
-    UIApplication *app = UIApplication.sharedApplication;
+    // 同一轮主线程事件只安排一次扫描。
+    if (KDUScanScheduled || KDUScanInProgress) {
+        return;
+    }
 
-    for (UIScene *scene in app.connectedScenes) {
-        if (![scene isKindOfClass:UIWindowScene.class] ||
-            scene.activationState != UISceneActivationStateForegroundActive) {
+    KDUScanScheduled = YES;
+
+    dispatch_async(dispatch_get_main_queue(), ^{
+        KDUScanScheduled = NO;
+
+        if (KDUScanInProgress) {
+            return;
+        }
+
+        KDUScanInProgress = YES;
+
+        @try {
+            [self scanForSettingsPage];
+        } @finally {
+            KDUScanInProgress = NO;
+        }
+    });
+}
+
+#pragma mark - Scan Active Windows
+
++ (void)scanForSettingsPage {
+    if (!NSThread.isMainThread) {
+        return;
+    }
+
+    UIApplication *application = UIApplication.sharedApplication;
+
+    for (UIScene *scene in application.connectedScenes) {
+        if (![scene isKindOfClass:UIWindowScene.class]) {
+            continue;
+        }
+
+        if (scene.activationState !=
+            UISceneActivationStateForegroundActive) {
             continue;
         }
 
@@ -94,35 +118,47 @@ static const NSInteger KDUSettingsEntryTag = 0x4B445532;
     }
 }
 
+#pragma mark - Controller Traversal
+
 + (void)inspectController:(UIViewController *)controller {
-    if (!controller) return;
+    if (!controller) {
+        return;
+    }
 
     [self addEntryIfSettingsController:controller];
 
     if ([controller isKindOfClass:UINavigationController.class]) {
-        UINavigationController *nav = (UINavigationController *)controller;
+        UINavigationController *navigationController =
+            (UINavigationController *)controller;
 
-        for (UIViewController *child in nav.viewControllers) {
+        for (UIViewController *child
+             in navigationController.viewControllers) {
             [self inspectController:child];
         }
     } else if ([controller isKindOfClass:UITabBarController.class]) {
-        UITabBarController *tabs = (UITabBarController *)controller;
+        UITabBarController *tabController =
+            (UITabBarController *)controller;
 
-        for (UIViewController *child in tabs.viewControllers) {
+        for (UIViewController *child
+             in tabController.viewControllers) {
             [self inspectController:child];
         }
     } else {
-        for (UIViewController *child in controller.childViewControllers) {
+        for (UIViewController *child
+             in controller.childViewControllers) {
             [self inspectController:child];
         }
     }
 
-    if (controller.presentedViewController) {
-        [self inspectController:controller.presentedViewController];
+    UIViewController *presented =
+        controller.presentedViewController;
+
+    if (presented && presented != controller) {
+        [self inspectController:presented];
     }
 }
 
-#pragma mark - Settings Page Detection
+#pragma mark - Detect Native Settings Page
 
 + (void)addEntryIfSettingsController:(UIViewController *)controller {
     if (!controller ||
@@ -132,11 +168,17 @@ static const NSInteger KDUSettingsEntryTag = 0x4B445532;
         return;
     }
 
-    UITableView *table = [self findTableView:controller.view depth:0];
-    if (!table) return;
+    UITableView *table =
+        [self findTableView:controller.view depth:0];
 
-    // 同一张表只添加一次。
-    if ([table viewWithTag:KDUSettingsEntryTag]) return;
+    if (!table) {
+        return;
+    }
+
+    // 不重复插入同一个入口。
+    if ([table.tableHeaderView viewWithTag:KDUSettingsEntryTag]) {
+        return;
+    }
 
     NSMutableString *visibleText = [NSMutableString string];
 
@@ -152,19 +194,22 @@ static const NSInteger KDUSettingsEntryTag = 0x4B445532;
         @"个人信息管理",
         @"用户协议",
         @"个人信息收集清单",
-        @"第三方信息共享清单"
+        @"第三方信息共享清单",
+        @"设置"
     ];
 
-    NSUInteger matchedMarkerCount = 0;
+    BOOL matched = NO;
 
     for (NSString *marker in markers) {
         if ([visibleText containsString:marker]) {
-            matchedMarkerCount++;
+            matched = YES;
+            break;
         }
     }
 
-    // 避免把插件入口插入无关页面。
-    if (matchedMarkerCount < 2) return;
+    if (!matched) {
+        return;
+    }
 
     CGFloat tableWidth = CGRectGetWidth(table.bounds);
 
@@ -172,7 +217,9 @@ static const NSInteger KDUSettingsEntryTag = 0x4B445532;
         tableWidth = CGRectGetWidth(controller.view.bounds);
     }
 
-    if (tableWidth <= 0) return;
+    if (tableWidth <= 0) {
+        return;
+    }
 
     UIView *oldHeader = table.tableHeaderView;
 
@@ -181,21 +228,34 @@ static const NSInteger KDUSettingsEntryTag = 0x4B445532;
         : 0.0;
 
     UIView *container = [[UIView alloc]
-        initWithFrame:CGRectMake(0, 0, tableWidth, 62.0 + oldHeight)];
+        initWithFrame:CGRectMake(
+            0,
+            0,
+            tableWidth,
+            62.0 + oldHeight
+        )];
 
     container.backgroundColor = UIColor.clearColor;
     container.autoresizingMask = UIViewAutoresizingFlexibleWidth;
+    container.tag = KDUSettingsEntryTag;
 
     UIButton *entry = [UIButton buttonWithType:UIButtonTypeSystem];
 
-    entry.tag = KDUSettingsEntryTag;
-    entry.frame = CGRectMake(16, 7, MAX(0, tableWidth - 32), 48);
+    entry.frame = CGRectMake(
+        16,
+        7,
+        MAX(0, tableWidth - 32),
+        48
+    );
+
     entry.autoresizingMask = UIViewAutoresizingFlexibleWidth;
     entry.backgroundColor = UIColor.secondarySystemBackgroundColor;
     entry.layer.cornerRadius = 12.0;
     entry.clipsToBounds = YES;
+
     entry.contentHorizontalAlignment =
         UIControlContentHorizontalAlignmentLeft;
+
     entry.contentEdgeInsets = UIEdgeInsetsMake(0, 16, 0, 16);
 
     [entry setTitle:@"K-Douyin Ultra"
@@ -205,7 +265,8 @@ static const NSInteger KDUSettingsEntryTag = 0x4B445532;
                 forState:UIControlStateNormal];
 
     entry.titleLabel.font =
-        [UIFont systemFontOfSize:16 weight:UIFontWeightSemibold];
+        [UIFont systemFontOfSize:16
+                          weight:UIFontWeightSemibold];
 
     [entry addTarget:self
               action:@selector(openPluginSettings:)
@@ -213,22 +274,33 @@ static const NSInteger KDUSettingsEntryTag = 0x4B445532;
 
     [container addSubview:entry];
 
-    // 保留原有 Header 内容，避免覆盖原生设置页已有内容。
+    // 保留原有 Header，不直接丢弃。
     if (oldHeader) {
-        oldHeader.frame = CGRectMake(0, 62.0, tableWidth, oldHeight);
-        oldHeader.autoresizingMask |= UIViewAutoresizingFlexibleWidth;
+        oldHeader.frame = CGRectMake(
+            0,
+            62.0,
+            tableWidth,
+            oldHeight
+        );
+
+        oldHeader.autoresizingMask |=
+            UIViewAutoresizingFlexibleWidth;
+
         [container addSubview:oldHeader];
     }
 
     table.tableHeaderView = container;
 }
 
-#pragma mark - Text Collection
+#pragma mark - Collect Visible Text
 
 + (void)collectTextFromView:(UIView *)view
                        into:(NSMutableString *)result
                       depth:(NSUInteger)depth {
-    if (!view || depth > 12 || view.hidden || view.alpha < 0.05) {
+    if (!view ||
+        depth > 12 ||
+        view.hidden ||
+        view.alpha < 0.05) {
         return;
     }
 
@@ -239,7 +311,8 @@ static const NSInteger KDUSettingsEntryTag = 0x4B445532;
             [result appendFormat:@" %@", text];
         }
     } else if ([view isKindOfClass:UIButton.class]) {
-        NSString *text = ((UIButton *)view).currentTitle;
+        NSString *text =
+            ((UIButton *)view).currentTitle;
 
         if (text.length > 0) {
             [result appendFormat:@" %@", text];
@@ -253,19 +326,25 @@ static const NSInteger KDUSettingsEntryTag = 0x4B445532;
     }
 }
 
-#pragma mark - Table View Lookup
+#pragma mark - Find Table View
 
-+ (UITableView *)findTableView:(UIView *)view depth:(NSUInteger)depth {
-    if (!view || depth > 12) return nil;
++ (UITableView *)findTableView:(UIView *)view
+                         depth:(NSUInteger)depth {
+    if (!view || depth > 12) {
+        return nil;
+    }
 
     if ([view isKindOfClass:UITableView.class]) {
         return (UITableView *)view;
     }
 
     for (UIView *child in view.subviews) {
-        UITableView *found = [self findTableView:child depth:depth + 1];
+        UITableView *found =
+            [self findTableView:child depth:depth + 1];
 
-        if (found) return found;
+        if (found) {
+            return found;
+        }
     }
 
     return nil;
@@ -274,43 +353,70 @@ static const NSInteger KDUSettingsEntryTag = 0x4B445532;
 #pragma mark - Open Plugin Settings
 
 + (void)openPluginSettings:(UIButton *)sender {
+    if (!NSThread.isMainThread) {
+        dispatch_async(dispatch_get_main_queue(), ^{
+            [self openPluginSettings:sender];
+        });
+        return;
+    }
+
     UIWindow *window = sender.window;
 
-    if (!window.rootViewController) return;
+    if (!window || !window.rootViewController) {
+        return;
+    }
 
     UIViewController *top =
         [self topController:window.rootViewController];
 
     if (!top ||
         [top isKindOfClass:KDUSettingsController.class] ||
+        top.isBeingDismissed ||
         top.presentedViewController) {
         return;
     }
 
-    UINavigationController *nav =
+    KDUSettingsController *settingsController =
+        [KDUSettingsController new];
+
+    UINavigationController *navigationController =
         [[UINavigationController alloc]
-            initWithRootViewController:[KDUSettingsController new]];
+            initWithRootViewController:settingsController];
 
-    nav.modalPresentationStyle = UIModalPresentationPageSheet;
+    navigationController.modalPresentationStyle =
+        UIModalPresentationPageSheet;
 
-    [top presentViewController:nav animated:YES completion:nil];
+    [top presentViewController:navigationController
+                      animated:YES
+                    completion:nil];
 }
 
+#pragma mark - Resolve Top Controller
+
 + (UIViewController *)topController:(UIViewController *)controller {
-    if (!controller) return nil;
+    if (!controller) {
+        return nil;
+    }
 
     if (controller.presentedViewController) {
-        return [self topController:controller.presentedViewController];
+        return [self topController:
+            controller.presentedViewController];
     }
 
     if ([controller isKindOfClass:UINavigationController.class]) {
-        UINavigationController *nav = (UINavigationController *)controller;
-        return [self topController:nav.visibleViewController];
+        UINavigationController *navigationController =
+            (UINavigationController *)controller;
+
+        return [self topController:
+            navigationController.visibleViewController];
     }
 
     if ([controller isKindOfClass:UITabBarController.class]) {
-        UITabBarController *tabs = (UITabBarController *)controller;
-        return [self topController:tabs.selectedViewController];
+        UITabBarController *tabController =
+            (UITabBarController *)controller;
+
+        return [self topController:
+            tabController.selectedViewController];
     }
 
     return controller;
@@ -318,36 +424,15 @@ static const NSInteger KDUSettingsEntryTag = 0x4B445532;
 
 @end
 
-#pragma mark - View Controller Hooks
+#pragma mark - Single Lifecycle Hook
 
 @implementation UIViewController (KDUSettingsIntegration)
 
-- (void)kdu_viewWillAppear:(BOOL)animated {
-    // 调用原始 viewWillAppear:。
-    [self kdu_viewWillAppear:animated];
-
-    // 在页面即将显示时开始检查，减少入口出现延迟。
-    if (NSThread.isMainThread) {
-        [KDUSettingsIntegration scanForSettingsPage];
-    } else {
-        dispatch_async(dispatch_get_main_queue(), ^{
-            [KDUSettingsIntegration scanForSettingsPage];
-        });
-    }
-}
-
 - (void)kdu_viewDidAppear:(BOOL)animated {
-    // 调用原始 viewDidAppear:。
+    // 交换实现后，此调用会进入 UIKit 原始的 viewDidAppear:。
     [self kdu_viewDidAppear:animated];
 
-    // 作为后备检查，处理 viewWillAppear 时视图尚未挂到 window 的情况。
-    if (NSThread.isMainThread) {
-        [KDUSettingsIntegration scanForSettingsPage];
-    } else {
-        dispatch_async(dispatch_get_main_queue(), ^{
-            [KDUSettingsIntegration scanForSettingsPage];
-        });
-    }
+    [KDUSettingsIntegration requestScan];
 }
 
 @end
