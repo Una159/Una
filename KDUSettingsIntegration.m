@@ -1,35 +1,33 @@
 
 #import "KDUSettingsIntegration.h"
 #import "KDUSettingsController.h"
+
 #import <UIKit/UIKit.h>
 #import <objc/runtime.h>
 
 static const NSInteger KDUSettingsEntryTag = 0x4B445532;
-
-// 扫描状态只在主线程访问。
-static BOOL KDUScanScheduled = NO;
-static BOOL KDUScanInProgress = NO;
+static const void *KDUEntryContainerKey = &KDUEntryContainerKey;
 
 @interface UIViewController (KDUSettingsIntegration)
-- (void)kdu_viewDidAppear:(BOOL)animated;
+- (void)kdu_settings_viewDidAppear:(BOOL)animated;
 @end
 
 @interface KDUSettingsIntegration ()
-+ (void)requestScan;
-+ (void)scanForSettingsPage;
-+ (void)inspectController:(UIViewController *)controller;
++ (void)inspectVisibleController:(UIViewController *)controller;
 + (void)addEntryIfSettingsController:(UIViewController *)controller;
 + (void)collectTextFromView:(UIView *)view
                        into:(NSMutableString *)result
                       depth:(NSUInteger)depth;
 + (UITableView *)findTableView:(UIView *)view depth:(NSUInteger)depth;
++ (BOOL)isNativeSettingsController:(UIViewController *)controller
+                              text:(NSString *)text;
 + (void)openPluginSettings:(UIButton *)sender;
 + (UIViewController *)topController:(UIViewController *)controller;
 @end
 
 @implementation KDUSettingsIntegration
 
-#pragma mark - Install One Hook
+#pragma mark - Hook installation
 
 + (void)installHooks {
     static dispatch_once_t onceToken;
@@ -41,124 +39,102 @@ static BOOL KDUScanInProgress = NO;
             class_getInstanceMethod(cls, @selector(viewDidAppear:));
 
         Method replacement =
-            class_getInstanceMethod(cls, @selector(kdu_viewDidAppear:));
+            class_getInstanceMethod(
+                cls,
+                @selector(kdu_settings_viewDidAppear:)
+            );
 
         if (original && replacement) {
             method_exchangeImplementations(original, replacement);
         }
     });
-
-    [self requestScan];
 }
 
-#pragma mark - Coalesced Scan Request
+#pragma mark - Inspect only the controller that appeared
 
-+ (void)requestScan {
++ (void)inspectVisibleController:(UIViewController *)controller {
     if (!NSThread.isMainThread) {
         dispatch_async(dispatch_get_main_queue(), ^{
-            [self requestScan];
+            [self inspectVisibleController:controller];
         });
         return;
     }
 
-    // 同一轮主线程事件只安排一次扫描。
-    if (KDUScanScheduled || KDUScanInProgress) {
-        return;
-    }
-
-    KDUScanScheduled = YES;
-
-    dispatch_async(dispatch_get_main_queue(), ^{
-        KDUScanScheduled = NO;
-
-        if (KDUScanInProgress) {
-            return;
-        }
-
-        KDUScanInProgress = YES;
-
-        @try {
-            [self scanForSettingsPage];
-        } @finally {
-            KDUScanInProgress = NO;
-        }
-    });
-}
-
-#pragma mark - Scan Active Windows
-
-+ (void)scanForSettingsPage {
-    if (!NSThread.isMainThread) {
-        return;
-    }
-
-    UIApplication *application = UIApplication.sharedApplication;
-
-    for (UIScene *scene in application.connectedScenes) {
-        if (![scene isKindOfClass:UIWindowScene.class]) {
-            continue;
-        }
-
-        if (scene.activationState !=
-            UISceneActivationStateForegroundActive) {
-            continue;
-        }
-
-        UIWindowScene *windowScene = (UIWindowScene *)scene;
-
-        for (UIWindow *window in windowScene.windows) {
-            if (window.hidden ||
-                window.alpha < 0.01 ||
-                !window.rootViewController) {
-                continue;
-            }
-
-            [self inspectController:window.rootViewController];
-        }
-    }
-}
-
-#pragma mark - Controller Traversal
-
-+ (void)inspectController:(UIViewController *)controller {
-    if (!controller) {
+    if (!controller ||
+        [controller isKindOfClass:KDUSettingsController.class] ||
+        !controller.isViewLoaded ||
+        !controller.view.window ||
+        controller.isBeingDismissed ||
+        controller.isMovingFromParentViewController) {
         return;
     }
 
     [self addEntryIfSettingsController:controller];
 
+    // 只检查当前控制器正在显示的子控制器，不扫描所有窗口。
+    UIViewController *visibleChild = nil;
+
     if ([controller isKindOfClass:UINavigationController.class]) {
-        UINavigationController *navigationController =
-            (UINavigationController *)controller;
-
-        for (UIViewController *child
-             in navigationController.viewControllers) {
-            [self inspectController:child];
-        }
+        visibleChild =
+            ((UINavigationController *)controller).visibleViewController;
     } else if ([controller isKindOfClass:UITabBarController.class]) {
-        UITabBarController *tabController =
-            (UITabBarController *)controller;
-
-        for (UIViewController *child
-             in tabController.viewControllers) {
-            [self inspectController:child];
-        }
-    } else {
-        for (UIViewController *child
-             in controller.childViewControllers) {
-            [self inspectController:child];
-        }
+        visibleChild =
+            ((UITabBarController *)controller).selectedViewController;
     }
 
-    UIViewController *presented =
-        controller.presentedViewController;
-
-    if (presented && presented != controller) {
-        [self inspectController:presented];
+    if (visibleChild &&
+        visibleChild != controller &&
+        visibleChild.isViewLoaded &&
+        visibleChild.view.window) {
+        [self addEntryIfSettingsController:visibleChild];
     }
 }
 
-#pragma mark - Detect Native Settings Page
+#pragma mark - Strict native Settings page detection
+
++ (BOOL)isNativeSettingsController:(UIViewController *)controller
+                              text:(NSString *)text {
+    if (!controller || text.length == 0) {
+        return NO;
+    }
+
+    NSString *title = controller.title ?: @"";
+    NSString *navigationTitle =
+        controller.navigationItem.title ?: @"";
+
+    BOOL titleLooksLikeSettings =
+        [title isEqualToString:@"设置"] ||
+        [navigationTitle isEqualToString:@"设置"];
+
+    // 不把“设置”单独作为识别依据，避免误匹配其他页面。
+    NSArray<NSString *> *strongMarkers = @[
+        @"账号与安全",
+        @"个人信息管理",
+        @"隐私政策",
+        @"用户协议",
+        @"应用权限",
+        @"个人信息收集清单",
+        @"第三方信息共享清单"
+    ];
+
+    NSUInteger matchedCount = 0;
+
+    for (NSString *marker in strongMarkers) {
+        if ([text containsString:marker]) {
+            matchedCount++;
+        }
+    }
+
+    // 有明确原生标题时至少匹配两个设置专属项目；
+    // 没有明确标题时要求至少三个专属项目。
+    if (titleLooksLikeSettings) {
+        return matchedCount >= 2;
+    }
+
+    return matchedCount >= 3;
+}
+
+#pragma mark - Add entry
 
 + (void)addEntryIfSettingsController:(UIViewController *)controller {
     if (!controller ||
@@ -168,46 +144,30 @@ static BOOL KDUScanInProgress = NO;
         return;
     }
 
-    UITableView *table =
-        [self findTableView:controller.view depth:0];
-
-    if (!table) {
-        return;
-    }
-
-    // 不重复插入同一个入口。
-    if ([table.tableHeaderView viewWithTag:KDUSettingsEntryTag]) {
-        return;
-    }
-
     NSMutableString *visibleText = [NSMutableString string];
 
     [self collectTextFromView:controller.view
                          into:visibleText
                         depth:0];
 
-    NSArray<NSString *> *markers = @[
-        @"账号与安全",
-        @"通用设置",
-        @"隐私政策",
-        @"应用权限",
-        @"个人信息管理",
-        @"用户协议",
-        @"个人信息收集清单",
-        @"第三方信息共享清单",
-        @"设置"
-    ];
-
-    BOOL matched = NO;
-
-    for (NSString *marker in markers) {
-        if ([visibleText containsString:marker]) {
-            matched = YES;
-            break;
-        }
+    if (![self isNativeSettingsController:controller
+                                     text:visibleText]) {
+        return;
     }
 
-    if (!matched) {
+    UITableView *table =
+        [self findTableView:controller.view depth:0];
+
+    if (!table || table.hidden || table.alpha < 0.05) {
+        return;
+    }
+
+    UIView *oldHeader = table.tableHeaderView;
+
+    // 入口已经存在时不重复包装表头。
+    if (oldHeader &&
+        (oldHeader.tag == KDUSettingsEntryTag ||
+         [oldHeader viewWithTag:KDUSettingsEntryTag])) {
         return;
     }
 
@@ -221,25 +181,32 @@ static BOOL KDUScanInProgress = NO;
         return;
     }
 
-    UIView *oldHeader = table.tableHeaderView;
+    CGFloat oldHeight = 0;
 
-    CGFloat oldHeight = oldHeader
-        ? MAX(1.0, CGRectGetHeight(oldHeader.frame))
-        : 0.0;
+    if (oldHeader) {
+        oldHeight = CGRectGetHeight(oldHeader.frame);
+
+        if (!isfinite(oldHeight) || oldHeight < 0) {
+            oldHeight = 0;
+        }
+    }
+
+    CGFloat entryHeight = 62.0;
 
     UIView *container = [[UIView alloc]
         initWithFrame:CGRectMake(
             0,
             0,
             tableWidth,
-            62.0 + oldHeight
+            entryHeight + oldHeight
         )];
 
     container.backgroundColor = UIColor.clearColor;
     container.autoresizingMask = UIViewAutoresizingFlexibleWidth;
     container.tag = KDUSettingsEntryTag;
 
-    UIButton *entry = [UIButton buttonWithType:UIButtonTypeSystem];
+    UIButton *entry =
+        [UIButton buttonWithType:UIButtonTypeSystem];
 
     entry.frame = CGRectMake(
         16,
@@ -252,10 +219,8 @@ static BOOL KDUScanInProgress = NO;
     entry.backgroundColor = UIColor.secondarySystemBackgroundColor;
     entry.layer.cornerRadius = 12.0;
     entry.clipsToBounds = YES;
-
     entry.contentHorizontalAlignment =
         UIControlContentHorizontalAlignmentLeft;
-
     entry.contentEdgeInsets = UIEdgeInsetsMake(0, 16, 0, 16);
 
     [entry setTitle:@"K-Douyin Ultra"
@@ -274,11 +239,10 @@ static BOOL KDUScanInProgress = NO;
 
     [container addSubview:entry];
 
-    // 保留原有 Header，不直接丢弃。
     if (oldHeader) {
         oldHeader.frame = CGRectMake(
             0,
-            62.0,
+            entryHeight,
             tableWidth,
             oldHeight
         );
@@ -289,33 +253,48 @@ static BOOL KDUScanInProgress = NO;
         [container addSubview:oldHeader];
     }
 
+    // 仅在确认属于原生设置页后修改表头。
     table.tableHeaderView = container;
+
+    objc_setAssociatedObject(
+        table,
+        KDUEntryContainerKey,
+        container,
+        OBJC_ASSOCIATION_RETAIN_NONATOMIC
+    );
 }
 
-#pragma mark - Collect Visible Text
+#pragma mark - View traversal
 
 + (void)collectTextFromView:(UIView *)view
                        into:(NSMutableString *)result
                       depth:(NSUInteger)depth {
     if (!view ||
-        depth > 12 ||
+        depth > 10 ||
         view.hidden ||
         view.alpha < 0.05) {
         return;
     }
 
     if ([view isKindOfClass:UILabel.class]) {
-        NSString *text = ((UILabel *)view).text;
+        NSString *value = ((UILabel *)view).text;
 
-        if (text.length > 0) {
-            [result appendFormat:@" %@", text];
+        if (value.length > 0) {
+            [result appendFormat:@" %@", value];
         }
     } else if ([view isKindOfClass:UIButton.class]) {
-        NSString *text =
-            ((UIButton *)view).currentTitle;
+        UIButton *button = (UIButton *)view;
 
-        if (text.length > 0) {
-            [result appendFormat:@" %@", text];
+        NSString *value = button.currentTitle;
+
+        if (value.length > 0) {
+            [result appendFormat:@" %@", value];
+        }
+
+        NSString *accessibilityLabel = button.accessibilityLabel;
+
+        if (accessibilityLabel.length > 0) {
+            [result appendFormat:@" %@", accessibilityLabel];
         }
     }
 
@@ -326,11 +305,9 @@ static BOOL KDUScanInProgress = NO;
     }
 }
 
-#pragma mark - Find Table View
-
 + (UITableView *)findTableView:(UIView *)view
                          depth:(NSUInteger)depth {
-    if (!view || depth > 12) {
+    if (!view || depth > 10) {
         return nil;
     }
 
@@ -350,7 +327,7 @@ static BOOL KDUScanInProgress = NO;
     return nil;
 }
 
-#pragma mark - Open Plugin Settings
+#pragma mark - Open plugin settings
 
 + (void)openPluginSettings:(UIButton *)sender {
     if (!NSThread.isMainThread) {
@@ -372,26 +349,25 @@ static BOOL KDUScanInProgress = NO;
     if (!top ||
         [top isKindOfClass:KDUSettingsController.class] ||
         top.isBeingDismissed ||
+        top.isBeingPresented ||
         top.presentedViewController) {
         return;
     }
 
-    KDUSettingsController *settingsController =
+    KDUSettingsController *settings =
         [KDUSettingsController new];
 
-    UINavigationController *navigationController =
+    UINavigationController *navigation =
         [[UINavigationController alloc]
-            initWithRootViewController:settingsController];
+            initWithRootViewController:settings];
 
-    navigationController.modalPresentationStyle =
+    navigation.modalPresentationStyle =
         UIModalPresentationPageSheet;
 
-    [top presentViewController:navigationController
+    [top presentViewController:navigation
                       animated:YES
                     completion:nil];
 }
-
-#pragma mark - Resolve Top Controller
 
 + (UIViewController *)topController:(UIViewController *)controller {
     if (!controller) {
@@ -399,24 +375,21 @@ static BOOL KDUScanInProgress = NO;
     }
 
     if (controller.presentedViewController) {
-        return [self topController:
-            controller.presentedViewController];
+        return [self topController:controller.presentedViewController];
     }
 
     if ([controller isKindOfClass:UINavigationController.class]) {
-        UINavigationController *navigationController =
+        UINavigationController *nav =
             (UINavigationController *)controller;
 
-        return [self topController:
-            navigationController.visibleViewController];
+        return [self topController:nav.visibleViewController];
     }
 
     if ([controller isKindOfClass:UITabBarController.class]) {
-        UITabBarController *tabController =
+        UITabBarController *tabs =
             (UITabBarController *)controller;
 
-        return [self topController:
-            tabController.selectedViewController];
+        return [self topController:tabs.selectedViewController];
     }
 
     return controller;
@@ -424,15 +397,25 @@ static BOOL KDUScanInProgress = NO;
 
 @end
 
-#pragma mark - Single Lifecycle Hook
-
 @implementation UIViewController (KDUSettingsIntegration)
 
-- (void)kdu_viewDidAppear:(BOOL)animated {
-    // 交换实现后，此调用会进入 UIKit 原始的 viewDidAppear:。
-    [self kdu_viewDidAppear:animated];
+- (void)kdu_settings_viewDidAppear:(BOOL)animated {
+    // 调用交换后的原始 viewDidAppear:。
+    [self kdu_settings_viewDidAppear:animated];
 
-    [KDUSettingsIntegration requestScan];
+    // 不在当前生命周期调用栈内扫描或修改视图层级。
+    __weak UIViewController *weakSelf = self;
+
+    dispatch_async(dispatch_get_main_queue(), ^{
+        UIViewController *strongSelf = weakSelf;
+
+        if (!strongSelf) {
+            return;
+        }
+
+        [KDUSettingsIntegration
+            inspectVisibleController:strongSelf];
+    });
 }
 
 @end
