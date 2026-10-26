@@ -26,7 +26,61 @@ static const void *KDUEntryContainerKey = &KDUEntryContainerKey;
 @end
 
 @implementation KDUSettingsIntegration
++ (void)scanForSettingsPage {
+    if (!NSThread.isMainThread) {
+        dispatch_async(dispatch_get_main_queue(), ^{
+            [self scanForSettingsPage];
+        });
+        return;
+    }
 
+    UIViewController *root = nil;
+
+    for (UIScene *scene in UIApplication.sharedApplication.connectedScenes) {
+        if (![scene isKindOfClass:UIWindowScene.class]) {
+            continue;
+        }
+
+        if (scene.activationState != UISceneActivationStateForegroundActive) {
+            continue;
+        }
+
+        for (UIWindow *window in ((UIWindowScene *)scene).windows) {
+            if (window.hidden || window.alpha < 0.01 ||
+                !window.rootViewController) {
+                continue;
+            }
+
+            root = window.rootViewController;
+            break;
+        }
+
+        if (root) {
+            break;
+        }
+    }
+
+    if (!root) {
+        return;
+    }
+
+    UIViewController *visible = root;
+
+    while (visible.presentedViewController &&
+           !visible.presentedViewController.isBeingDismissed) {
+        visible = visible.presentedViewController;
+    }
+
+    if ([visible isKindOfClass:UINavigationController.class]) {
+        visible = ((UINavigationController *)visible).visibleViewController;
+    } else if ([visible isKindOfClass:UITabBarController.class]) {
+        visible = ((UITabBarController *)visible).selectedViewController;
+    }
+
+    if (visible) {
+        [self inspectVisibleController:visible];
+    }
+}
 #pragma mark - Hook installation
 
 + (void)installHooks {
