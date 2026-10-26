@@ -30,38 +30,90 @@
             @{
                 @"id": @"video.hideWatermarkButton",
                 @"title": @"隐藏水印按钮",
-                @"detail": @"界面元素开关占位，不会修改视频文件。",
+                @"detail": @"界面元素控制待实现，不修改视频文件。",
                 @"category": @"视频",
                 @"implemented": @NO
             },
             @{
                 @"id": @"download.enabled",
                 @"title": @"视频保存模块",
-                @"detail": @"下载流程待实现；当前只保存设置。",
+                @"detail": @"下载流程待实现。",
                 @"category": @"下载",
                 @"implemented": @NO
             },
             @{
                 @"id": @"interface.liquidGlass",
                 @"title": @"液态玻璃主题",
-                @"detail": @"控制设置页的玻璃模糊、透明卡片、边框和阴影效果。",
+                @"detail": @"控制插件设置页的玻璃模糊、透明卡片、边框和阴影。",
                 @"category": @"界面",
                 @"implemented": @YES
             },
+
+            // 保留原有配置键，兼容此前保存的设置。
             @{
                 @"id": @"interface.hideShopEntry",
-                @"title": @"仅保留推荐",
-                @"detail": @"隐藏首页顶部除推荐以外的导航标签，保留推荐入口。需要实机验证。",
-                @"category": @"界面",
+                @"title": @"顶部导航标签",
+                @"detail": @"计划支持隐藏非推荐标签并保留推荐。首页视图定位待验证。",
+                @"category": @"首页元素",
                 @"implemented": @NO
             },
             @{
                 @"id": @"interface.hideHomeSearch",
                 @"title": @"隐藏首页搜索入口",
-                @"detail": @"独立控制首页顶部搜索入口的显示，需要实机验证。",
-                @"category": @"界面",
+                @"detail": @"独立隐藏首页右上角搜索入口；控件定位待验证。",
+                @"category": @"首页元素",
                 @"implemented": @NO
             },
+            @{
+                @"id": @"interface.hideHomeBottomBar",
+                @"title": @"隐藏底部导航",
+                @"detail": @"独立隐藏首页底部导航栏；页面识别与恢复逻辑待验证。",
+                @"category": @"首页元素",
+                @"implemented": @NO
+            },
+            @{
+                @"id": @"interface.hideAuthorInfo",
+                @"title": @"隐藏作者信息与文案",
+                @"detail": @"计划控制作者名称、视频描述和话题标签；控件定位待验证。",
+                @"category": @"首页元素",
+                @"implemented": @NO
+            },
+            @{
+                @"id": @"interface.hideMusicCollection",
+                @"title": @"隐藏音乐与合集入口",
+                @"detail": @"计划控制音乐信息、拍同款及合集入口；控件定位待验证。",
+                @"category": @"首页元素",
+                @"implemented": @NO
+            },
+            @{
+                @"id": @"interface.hideVideoExtras",
+                @"title": @"隐藏视频附加入口",
+                @"detail": @"计划控制全屏观看及其他视频悬浮入口；控件定位待验证。",
+                @"category": @"首页元素",
+                @"implemented": @NO
+            },
+            @{
+                @"id": @"interface.hideInteractionButtons",
+                @"title": @"隐藏互动按钮",
+                @"detail": @"计划控制点赞、评论、收藏和分享按钮；各按钮识别待验证。",
+                @"category": @"首页元素",
+                @"implemented": @NO
+            },
+            @{
+                @"id": @"interface.hideAuthorAvatar",
+                @"title": @"隐藏作者头像",
+                @"detail": @"计划控制视频侧边作者头像及底部音乐头像；控件定位待验证。",
+                @"category": @"首页元素",
+                @"implemented": @NO
+            },
+            @{
+                @"id": @"interface.hideHomeMenu",
+                @"title": @"隐藏首页菜单按钮",
+                @"detail": @"独立隐藏首页左上角菜单入口；控件定位待验证。",
+                @"category": @"首页元素",
+                @"implemented": @NO
+            },
+
             @{
                 @"id": @"privacy.reduceTrackingUI",
                 @"title": @"减少干扰界面",
@@ -96,7 +148,6 @@
             KDUFeature *feature = [KDUFeature new];
 
             feature.identifier = item[@"id"];
-            // 保留原有配置键，兼容已保存的设置。
             feature.configKey = item[@"id"];
             feature.title = item[@"title"];
             feature.detail = item[@"detail"];
