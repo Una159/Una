@@ -204,6 +204,12 @@
     self.navigationController.navigationBar.tintColor = UIColor.labelColor;
 
     [self updateNavigationAppearance];
+    self.searchController.searchResultsUpdater = self;
+    self.searchController.searchBar.placeholder = @"搜索全部功能";
+    self.searchController.searchBar.searchBarStyle = UISearchBarStyleMinimal;
+    self.searchController.obscuresBackgroundDuringPresentation = NO;
+    self.navigationItem.searchController = self.searchController;
+    self.definesPresentationContext = YES;
 
     self.navigationItem.rightBarButtonItem =
         [[UIBarButtonItem alloc] initWithTitle:@"工具"
@@ -524,6 +530,19 @@
 
     [self.tableView reloadData];
     [self updateEmptyState];
+
+    if (self.visibleFeatures.count == 0) {
+        UILabel *emptyLabel = [[UILabel alloc] initWithFrame:CGRectMake(0, 0, self.tableView.bounds.size.width, 88)];
+        emptyLabel.text = self.searchController.searchBar.text.length
+            ? @"没有找到匹配的功能"
+            : @"当前分类暂无功能";
+        emptyLabel.textColor = UIColor.secondaryLabelColor;
+        emptyLabel.textAlignment = NSTextAlignmentCenter;
+        emptyLabel.font = [UIFont systemFontOfSize:14 weight:UIFontWeightRegular];
+        self.tableView.tableFooterView = emptyLabel;
+    } else {
+        self.tableView.tableFooterView = [UIView new];
+    }
 }
 
 - (void)updateEmptyState {

@@ -9,6 +9,7 @@ on:
       - main
       - master
       - integration-pass1-1-1-2
+      - integration-pass1-1-1
 
 permissions:
   contents: read
