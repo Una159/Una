@@ -12,6 +12,8 @@
 @property (nonatomic, assign) BOOL glassEnabled;
 @property (nonatomic, strong) UIVisualEffectView *glassView;
 @property (nonatomic, strong) UIView *fallbackView;
+@property (nonatomic, strong) UILabel *titleLabel;
+@property (nonatomic, strong) UILabel *detailLabel;
 
 - (void)applyGlassStyle:(BOOL)enabled;
 
@@ -29,89 +31,137 @@
     self.contentView.backgroundColor = UIColor.clearColor;
     self.selectionStyle = UITableViewCellSelectionStyleNone;
 
-    self.fallbackView = [UIView new];
-    self.fallbackView.translatesAutoresizingMaskIntoConstraints = NO;
-    self.fallbackView.layer.cornerRadius = 18.0;
-    self.fallbackView.layer.cornerCurve = kCACornerCurveContinuous;
-    self.fallbackView.layer.borderWidth = 0.7;
-    self.fallbackView.userInteractionEnabled = NO;
+    _fallbackView = [UIView new];
+    _fallbackView.translatesAutoresizingMaskIntoConstraints = NO;
+    _fallbackView.layer.cornerRadius = 18.0;
+    _fallbackView.layer.cornerCurve = kCACornerCurveContinuous;
+    _fallbackView.layer.borderWidth = 0.7;
+    _fallbackView.userInteractionEnabled = NO;
 
-    [self.contentView insertSubview:self.fallbackView atIndex:0];
+    [self.contentView insertSubview:_fallbackView atIndex:0];
 
-    self.glassView = [[UIVisualEffectView alloc] initWithEffect:nil];
-    self.glassView.translatesAutoresizingMaskIntoConstraints = NO;
-    self.glassView.layer.cornerRadius = 18.0;
-    self.glassView.layer.cornerCurve = kCACornerCurveContinuous;
-    self.glassView.clipsToBounds = YES;
-    self.glassView.userInteractionEnabled = NO;
+    _glassView = [[UIVisualEffectView alloc] initWithEffect:nil];
+    _glassView.translatesAutoresizingMaskIntoConstraints = NO;
+    _glassView.layer.cornerRadius = 18.0;
+    _glassView.layer.cornerCurve = kCACornerCurveContinuous;
+    _glassView.clipsToBounds = YES;
+    _glassView.userInteractionEnabled = NO;
 
-    [self.contentView insertSubview:self.glassView aboveSubview:self.fallbackView];
+    [self.contentView insertSubview:_glassView
+                     aboveSubview:_fallbackView];
 
     [NSLayoutConstraint activateConstraints:@[
-        [self.fallbackView.topAnchor
-            constraintEqualToAnchor:self.contentView.topAnchor constant:5.0],
-        [self.fallbackView.bottomAnchor
-            constraintEqualToAnchor:self.contentView.bottomAnchor constant:-5.0],
-        [self.fallbackView.leadingAnchor
-            constraintEqualToAnchor:self.contentView.leadingAnchor constant:12.0],
-        [self.fallbackView.trailingAnchor
-            constraintEqualToAnchor:self.contentView.trailingAnchor constant:-12.0],
+        [_fallbackView.topAnchor
+            constraintEqualToAnchor:self.contentView.topAnchor
+                           constant:5.0],
+        [_fallbackView.bottomAnchor
+            constraintEqualToAnchor:self.contentView.bottomAnchor
+                           constant:-5.0],
+        [_fallbackView.leadingAnchor
+            constraintEqualToAnchor:self.contentView.leadingAnchor
+                           constant:12.0],
+        [_fallbackView.trailingAnchor
+            constraintEqualToAnchor:self.contentView.trailingAnchor
+                           constant:-12.0],
 
-        [self.glassView.topAnchor
-            constraintEqualToAnchor:self.fallbackView.topAnchor],
-        [self.glassView.bottomAnchor
-            constraintEqualToAnchor:self.fallbackView.bottomAnchor],
-        [self.glassView.leadingAnchor
-            constraintEqualToAnchor:self.fallbackView.leadingAnchor],
-        [self.glassView.trailingAnchor
-            constraintEqualToAnchor:self.fallbackView.trailingAnchor]
+        [_glassView.topAnchor
+            constraintEqualToAnchor:_fallbackView.topAnchor],
+        [_glassView.bottomAnchor
+            constraintEqualToAnchor:_fallbackView.bottomAnchor],
+        [_glassView.leadingAnchor
+            constraintEqualToAnchor:_fallbackView.leadingAnchor],
+        [_glassView.trailingAnchor
+            constraintEqualToAnchor:_fallbackView.trailingAnchor]
     ]];
 
-    self.textLabel.font =
-        [UIFont systemFontOfSize:15.5 weight:UIFontWeightSemibold];
-    self.textLabel.numberOfLines = 0;
-    self.textLabel.lineBreakMode = NSLineBreakByWordWrapping;
+    // 使用自定义标签，避免系统副标题布局造成文字重叠。
+    _titleLabel = [UILabel new];
+    _titleLabel.translatesAutoresizingMaskIntoConstraints = NO;
+    _titleLabel.font =
+        [UIFont systemFontOfSize:15.5
+                          weight:UIFontWeightSemibold];
+    _titleLabel.numberOfLines = 0;
+    _titleLabel.lineBreakMode = NSLineBreakByWordWrapping;
+    _titleLabel.textColor = UIColor.labelColor;
 
-    self.detailTextLabel.font =
-        [UIFont systemFontOfSize:12.5 weight:UIFontWeightRegular];
-    self.detailTextLabel.numberOfLines = 0;
-    self.detailTextLabel.lineBreakMode = NSLineBreakByWordWrapping;
-    self.detailTextLabel.textColor = UIColor.secondaryLabelColor;
+    _detailLabel = [UILabel new];
+    _detailLabel.translatesAutoresizingMaskIntoConstraints = NO;
+    _detailLabel.font =
+        [UIFont systemFontOfSize:12.5
+                          weight:UIFontWeightRegular];
+    _detailLabel.numberOfLines = 0;
+    _detailLabel.lineBreakMode = NSLineBreakByWordWrapping;
+    _detailLabel.textColor = UIColor.secondaryLabelColor;
 
-    self.contentView.layoutMargins = UIEdgeInsetsMake(12, 16, 12, 16);
+    [self.contentView addSubview:_titleLabel];
+    [self.contentView addSubview:_detailLabel];
+
+    [NSLayoutConstraint activateConstraints:@[
+        [_titleLabel.topAnchor
+            constraintEqualToAnchor:self.contentView.topAnchor
+                           constant:16.0],
+        [_titleLabel.leadingAnchor
+            constraintEqualToAnchor:self.contentView.leadingAnchor
+                           constant:30.0],
+        [_titleLabel.trailingAnchor
+            constraintEqualToAnchor:self.contentView.trailingAnchor
+                           constant:-92.0],
+
+        [_detailLabel.topAnchor
+            constraintEqualToAnchor:_titleLabel.bottomAnchor
+                           constant:5.0],
+        [_detailLabel.leadingAnchor
+            constraintEqualToAnchor:_titleLabel.leadingAnchor],
+        [_detailLabel.trailingAnchor
+            constraintEqualToAnchor:self.contentView.trailingAnchor
+                           constant:-92.0],
+        [_detailLabel.bottomAnchor
+            constraintEqualToAnchor:self.contentView.bottomAnchor
+                           constant:-16.0]
+    ]];
+
+    self.contentView.layoutMargins =
+        UIEdgeInsetsMake(12, 16, 12, 16);
 
     [self applyGlassStyle:NO];
+
     return self;
 }
 
-- (void)layoutSubviews {
-    [super layoutSubviews];
-
-    self.fallbackView.frame = self.contentView.bounds;
-    self.glassView.frame = self.fallbackView.bounds;
+- (void)setGlassEnabled:(BOOL)glassEnabled {
+    _glassEnabled = glassEnabled;
+    [self applyGlassStyle:glassEnabled];
 }
 
 - (void)applyGlassStyle:(BOOL)enabled {
-    self.glassEnabled = enabled;
+    _glassEnabled = enabled;
 
-    self.fallbackView.backgroundColor =
-        [UIColor.secondarySystemGroupedBackgroundColor
-            colorWithAlphaComponent:enabled ? 0.24 : 0.94];
+    if (@available(iOS 13.0, *)) {
+        _fallbackView.backgroundColor =
+            [UIColor secondarySystemGroupedBackgroundColor
+                colorWithAlphaComponent:enabled ? 0.24 : 0.94];
 
-    self.fallbackView.layer.borderColor =
-        [UIColor.separatorColor
-            colorWithAlphaComponent:enabled ? 0.38 : 0.18].CGColor;
+        _fallbackView.layer.borderColor =
+            [UIColor.separatorColor
+                colorWithAlphaComponent:enabled ? 0.38 : 0.18].CGColor;
 
-    self.glassView.effect = enabled
-        ? [UIBlurEffect effectWithStyle:UIBlurEffectStyleSystemThinMaterial]
-        : nil;
-    self.glassView.hidden = !enabled;
+        _glassView.effect = enabled
+            ? [UIBlurEffect effectWithStyle:
+                UIBlurEffectStyleSystemThinMaterial]
+            : nil;
 
-    self.glassView.layer.borderWidth = enabled ? 0.6 : 0.0;
-    self.glassView.layer.borderColor =
-        [UIColor.whiteColor colorWithAlphaComponent:0.35].CGColor;
+        _glassView.hidden = !enabled;
+        _glassView.layer.borderWidth = enabled ? 0.6 : 0.0;
+        _glassView.layer.borderColor =
+            [UIColor.whiteColor
+                colorWithAlphaComponent:0.35].CGColor;
 
-    self.contentView.layer.shadowColor = UIColor.blackColor.CGColor;
+        _titleLabel.textColor = UIColor.labelColor;
+        _detailLabel.textColor = UIColor.secondaryLabelColor;
+    }
+
+    self.contentView.layer.shadowColor =
+        UIColor.blackColor.CGColor;
     self.contentView.layer.shadowOpacity = enabled ? 0.07 : 0.0;
     self.contentView.layer.shadowRadius = enabled ? 8.0 : 0.0;
     self.contentView.layer.shadowOffset = CGSizeMake(0, 3);
@@ -123,8 +173,9 @@
 
     self.accessoryView = nil;
     self.accessoryType = UITableViewCellAccessoryNone;
-    self.textLabel.text = nil;
-    self.detailTextLabel.text = nil;
+
+    _titleLabel.text = nil;
+    _detailLabel.text = nil;
 }
 
 @end
@@ -139,11 +190,16 @@
 @property (nonatomic, copy) NSString *selectedCategory;
 @property (nonatomic, assign) BOOL liquidGlassEnabled;
 
+- (void)showMessage:(NSString *)title
+            message:(NSString *)message;
+- (void)updateNavigationAppearance;
+- (void)updateEmptyState;
+
 @end
 
 @implementation KDUSettingsController
 
-#pragma mark Lifecycle
+#pragma mark - Lifecycle
 
 - (void)viewDidLoad {
     [super viewDidLoad];
@@ -158,6 +214,8 @@
         UIScrollViewContentInsetAdjustmentAutomatic;
     self.tableView.keyboardDismissMode =
         UIScrollViewKeyboardDismissModeOnDrag;
+
+    // 让行高由自定义标签的上下约束自动决定。
     self.tableView.rowHeight = UITableViewAutomaticDimension;
     self.tableView.estimatedRowHeight = 96.0;
 
@@ -165,29 +223,40 @@
         self.tableView.sectionHeaderTopPadding = 8.0;
     }
 
-    self.liquidGlassEnabled = [[KDUConfigManager shared]
-        boolForKey:@"interface.liquidGlass"
-          fallback:YES];
+    self.liquidGlassEnabled =
+        [[KDUConfigManager shared]
+            boolForKey:@"interface.liquidGlass"
+              fallback:YES];
 
-    self.categories = [[KDUFeatureRegistry shared] categories];
-    if (![self.categories containsObject:@"全部"]) {
-        self.categories = [@[@"全部"] arrayByAddingObjectsFromArray:
-                          self.categories ?: @[]];
+    NSArray<NSString *> *registeredCategories =
+        [[KDUFeatureRegistry shared] categories] ?: @[];
+
+    if ([registeredCategories containsObject:@"全部"]) {
+        self.categories = registeredCategories;
+    } else {
+        self.categories =
+            [@[@"全部"] arrayByAddingObjectsFromArray:registeredCategories];
     }
+
     self.selectedCategory = @"全部";
 
     self.navigationItem.largeTitleDisplayMode =
         UINavigationItemLargeTitleDisplayModeAlways;
+
     self.navigationController.navigationBar.prefersLargeTitles = YES;
-    self.navigationController.navigationBar.tintColor = UIColor.labelColor;
+    self.navigationController.navigationBar.tintColor =
+        UIColor.labelColor;
 
     [self updateNavigationAppearance];
 
     self.searchController =
-        [[UISearchController alloc] initWithSearchResultsController:nil];
+        [[UISearchController alloc]
+            initWithSearchResultsController:nil];
+
     self.searchController.searchResultsUpdater = self;
     self.searchController.searchBar.placeholder = @"搜索全部功能";
-    self.searchController.searchBar.searchBarStyle = UISearchBarStyleMinimal;
+    self.searchController.searchBar.searchBarStyle =
+        UISearchBarStyleMinimal;
     self.searchController.obscuresBackgroundDuringPresentation = NO;
     self.searchController.hidesNavigationBarDuringPresentation = NO;
 
@@ -196,10 +265,11 @@
     self.definesPresentationContext = YES;
 
     self.navigationItem.rightBarButtonItem =
-        [[UIBarButtonItem alloc] initWithTitle:@"工具"
-                                         style:UIBarButtonItemStylePlain
-                                        target:self
-                                        action:@selector(showTools)];
+        [[UIBarButtonItem alloc]
+            initWithTitle:@"工具"
+                    style:UIBarButtonItemStylePlain
+                   target:self
+                   action:@selector(showTools)];
 
     [self.tableView registerClass:KDUFeatureTableCell.class
            forCellReuseIdentifier:@"FeatureCell"];
@@ -210,9 +280,10 @@
 - (void)viewWillAppear:(BOOL)animated {
     [super viewWillAppear:animated];
 
-    self.liquidGlassEnabled = [[KDUConfigManager shared]
-        boolForKey:@"interface.liquidGlass"
-          fallback:YES];
+    self.liquidGlassEnabled =
+        [[KDUConfigManager shared]
+            boolForKey:@"interface.liquidGlass"
+              fallback:YES];
 
     [self updateNavigationAppearance];
     [self.tableView reloadData];
@@ -224,7 +295,7 @@
           fallback:YES];
 }
 
-#pragma mark Appearance
+#pragma mark - Appearance
 
 - (void)updateNavigationAppearance {
     if (@available(iOS 13.0, *)) {
@@ -234,23 +305,28 @@
         [appearance configureWithDefaultBackground];
 
         appearance.backgroundEffect = self.liquidGlassEnabled
-            ? [UIBlurEffect effectWithStyle:UIBlurEffectStyleSystemChromeMaterial]
+            ? [UIBlurEffect effectWithStyle:
+                UIBlurEffectStyleSystemChromeMaterial]
             : nil;
 
         appearance.backgroundColor = self.liquidGlassEnabled
-            ? [UIColor.systemBackgroundColor colorWithAlphaComponent:0.55]
+            ? [UIColor.systemBackgroundColor
+                colorWithAlphaComponent:0.55]
             : UIColor.systemBackgroundColor;
 
-        self.navigationController.navigationBar.standardAppearance = appearance;
-        self.navigationController.navigationBar.scrollEdgeAppearance = appearance;
-        self.navigationController.navigationBar.compactAppearance = appearance;
+        self.navigationController.navigationBar.standardAppearance =
+            appearance;
+        self.navigationController.navigationBar.scrollEdgeAppearance =
+            appearance;
+        self.navigationController.navigationBar.compactAppearance =
+            appearance;
     }
 
     self.view.backgroundColor = UIColor.systemGroupedBackgroundColor;
     self.tableView.backgroundColor = UIColor.clearColor;
 }
 
-#pragma mark Search and Filtering
+#pragma mark - Search and Filtering
 
 - (void)refreshVisible {
     NSString *keyword = self.searchController.searchBar.text ?: @"";
@@ -258,7 +334,7 @@
     self.visibleFeatures =
         [[KDUFeatureRegistry shared]
             featuresMatching:keyword
-                    category:self.selectedCategory];
+                    category:self.selectedCategory] ?: @[];
 
     [self.tableView reloadData];
     [self updateEmptyState];
@@ -271,11 +347,15 @@
     }
 
     UILabel *emptyLabel = [UILabel new];
-    emptyLabel.frame = CGRectMake(0, 0, self.tableView.bounds.size.width, 110);
+    emptyLabel.frame =
+        CGRectMake(0, 0, self.tableView.bounds.size.width, 110);
     emptyLabel.autoresizingMask = UIViewAutoresizingFlexibleWidth;
-    emptyLabel.text = self.searchController.searchBar.text.length > 0
-        ? @"没有找到匹配的功能"
-        : @"当前分类暂无功能";
+
+    emptyLabel.text =
+        self.searchController.searchBar.text.length > 0
+            ? @"没有找到匹配的功能"
+            : @"当前分类暂无功能";
+
     emptyLabel.textColor = UIColor.secondaryLabelColor;
     emptyLabel.textAlignment = NSTextAlignmentCenter;
     emptyLabel.font = [UIFont systemFontOfSize:14.0];
@@ -289,7 +369,7 @@
     [self refreshVisible];
 }
 
-#pragma mark Table Data Source
+#pragma mark - Table Data Source
 
 - (NSInteger)numberOfSectionsInTableView:(UITableView *)tableView {
     return 2;
@@ -302,38 +382,42 @@
 
 - (NSString *)tableView:(UITableView *)tableView
  titleForHeaderInSection:(NSInteger)section {
-    if (section == 0) {
-        return @"功能分类";
-    }
-
-    return @"功能列表";
+    return section == 0 ? @"功能分类" : @"功能列表";
 }
 
 - (UIView *)tableView:(UITableView *)tableView
  viewForHeaderInSection:(NSInteger)section {
-    NSString *heading = [self tableView:tableView
-                 titleForHeaderInSection:section];
+    NSString *heading =
+        [self tableView:tableView
+ titleForHeaderInSection:section];
 
     UILabel *label = [UILabel new];
     label.text = heading;
-    label.font = [UIFont systemFontOfSize:13.0 weight:UIFontWeightSemibold];
+    label.font =
+        [UIFont systemFontOfSize:13.0
+                          weight:UIFontWeightSemibold];
     label.textColor = UIColor.secondaryLabelColor;
     label.backgroundColor = UIColor.clearColor;
 
     UIView *container = [UIView new];
     container.backgroundColor = UIColor.clearColor;
     [container addSubview:label];
+
     label.translatesAutoresizingMaskIntoConstraints = NO;
 
     [NSLayoutConstraint activateConstraints:@[
-        [label.leadingAnchor constraintEqualToAnchor:container.leadingAnchor
-                                            constant:18.0],
-        [label.trailingAnchor constraintEqualToAnchor:container.trailingAnchor
-                                             constant:-18.0],
-        [label.topAnchor constraintEqualToAnchor:container.topAnchor
-                                        constant:8.0],
-        [label.bottomAnchor constraintEqualToAnchor:container.bottomAnchor
-                                           constant:-5.0]
+        [label.leadingAnchor
+            constraintEqualToAnchor:container.leadingAnchor
+                           constant:18.0],
+        [label.trailingAnchor
+            constraintEqualToAnchor:container.trailingAnchor
+                           constant:-18.0],
+        [label.topAnchor
+            constraintEqualToAnchor:container.topAnchor
+                           constant:8.0],
+        [label.bottomAnchor
+            constraintEqualToAnchor:container.bottomAnchor
+                           constant:-5.0]
     ]];
 
     return container;
@@ -356,39 +440,43 @@
         [tableView dequeueReusableCellWithIdentifier:@"FeatureCell"
                                         forIndexPath:indexPath];
 
-    cell.glassEnabled = [self isLiquidGlassEnabled];
-    [cell applyGlassStyle:cell.glassEnabled];
+    [cell applyGlassStyle:[self isLiquidGlassEnabled]];
 
     cell.accessoryView = nil;
     cell.accessoryType = UITableViewCellAccessoryNone;
-    cell.textLabel.numberOfLines = 0;
-    cell.detailTextLabel.numberOfLines = 0;
-    cell.contentView.layoutMargins = UIEdgeInsetsMake(12, 16, 12, 16);
 
     if (indexPath.section == 0) {
         cell.selectionStyle = UITableViewCellSelectionStyleDefault;
-        cell.textLabel.text =
-            [NSString stringWithFormat:@"分类：%@", self.selectedCategory ?: @"全部"];
-        cell.textLabel.textColor = UIColor.labelColor;
-        cell.detailTextLabel.text = @"轻点选择功能分类";
-        cell.accessoryType = UITableViewCellAccessoryDisclosureIndicator;
+
+        cell.titleLabel.text =
+            [NSString stringWithFormat:@"分类：%@",
+                self.selectedCategory ?: @"全部"];
+
+        cell.titleLabel.textColor = UIColor.labelColor;
+        cell.detailLabel.text = @"轻点选择功能分类";
+        cell.accessoryType =
+            UITableViewCellAccessoryDisclosureIndicator;
+
         return cell;
     }
 
+    cell.selectionStyle = UITableViewCellSelectionStyleNone;
+
     KDUFeature *feature = self.visibleFeatures[indexPath.row];
 
-    cell.textLabel.text =
+    cell.titleLabel.text =
         [NSString stringWithFormat:@"%@ · %@",
             feature.title ?: @"未命名功能",
             feature.implemented ? @"已实现" : @"待实现"];
 
-    cell.textLabel.textColor = feature.implemented
+    cell.titleLabel.textColor = feature.implemented
         ? UIColor.labelColor
         : UIColor.secondaryLabelColor;
 
-    cell.detailTextLabel.text = feature.detail ?: @"";
+    cell.detailLabel.text = feature.detail ?: @"";
 
     UISwitch *toggle = [UISwitch new];
+
     toggle.on = [[KDUConfigManager shared]
         boolForKey:feature.configKey
           fallback:feature.defaultEnabled];
@@ -400,8 +488,10 @@
     toggle.alpha = toggle.enabled ? 1.0 : 0.45;
     toggle.accessibilityLabel = feature.title ?: @"功能开关";
 
-    // 用配置键保存身份，避免搜索、分类切换和重用导致行号错配。
-    toggle.accessibilityIdentifier = feature.configKey ?: feature.identifier;
+    // 用配置键保存身份，避免搜索和分类切换后行号错配。
+    toggle.accessibilityIdentifier =
+        feature.configKey ?: feature.identifier;
+
     toggle.onTintColor = UIColor.systemGreenColor;
 
     [toggle addTarget:self
@@ -409,10 +499,11 @@
      forControlEvents:UIControlEventValueChanged];
 
     cell.accessoryView = toggle;
+
     return cell;
 }
 
-#pragma mark Category Picker
+#pragma mark - Category Picker
 
 - (void)tableView:(UITableView *)tableView
 didSelectRowAtIndexPath:(NSIndexPath *)indexPath {
@@ -424,28 +515,33 @@ didSelectRowAtIndexPath:(NSIndexPath *)indexPath {
     }
 
     UIAlertController *picker =
-        [UIAlertController alertControllerWithTitle:@"选择功能分类"
-                                            message:nil
-                                     preferredStyle:UIAlertControllerStyleActionSheet];
+        [UIAlertController
+            alertControllerWithTitle:@"选择功能分类"
+                             message:nil
+                      preferredStyle:UIAlertControllerStyleActionSheet];
 
     for (NSString *category in self.categories) {
-        NSString *title = [category isEqualToString:self.selectedCategory]
-            ? [NSString stringWithFormat:@"✓ %@", category]
-            : category;
+        NSString *title =
+            [category isEqualToString:self.selectedCategory]
+                ? [NSString stringWithFormat:@"✓ %@", category]
+                : category;
 
         [picker addAction:
-            [UIAlertAction actionWithTitle:title
-                                     style:UIAlertActionStyleDefault
-                                   handler:^(__unused UIAlertAction *action) {
+            [UIAlertAction
+                actionWithTitle:title
+                          style:UIAlertActionStyleDefault
+                        handler:^(__unused UIAlertAction *action) {
+
             self.selectedCategory = category;
             [self refreshVisible];
         }]];
     }
 
     [picker addAction:
-        [UIAlertAction actionWithTitle:@"取消"
-                                 style:UIAlertActionStyleCancel
-                               handler:nil]];
+        [UIAlertAction
+            actionWithTitle:@"取消"
+                      style:UIAlertActionStyleCancel
+                    handler:nil]];
 
     if (UI_USER_INTERFACE_IDIOM() == UIUserInterfaceIdiomPad) {
         picker.popoverPresentationController.sourceView = tableView;
@@ -453,13 +549,16 @@ didSelectRowAtIndexPath:(NSIndexPath *)indexPath {
             [tableView rectForRowAtIndexPath:indexPath];
     }
 
-    [self presentViewController:picker animated:YES completion:nil];
+    [self presentViewController:picker
+                       animated:YES
+                     completion:nil];
 }
 
-#pragma mark Feature Switches
+#pragma mark - Feature Switches
 
 - (void)toggleChanged:(UISwitch *)sender {
     NSString *configKey = sender.accessibilityIdentifier;
+
     if (configKey.length == 0) {
         return;
     }
@@ -467,8 +566,10 @@ didSelectRowAtIndexPath:(NSIndexPath *)indexPath {
     KDUFeature *matchedFeature = nil;
 
     for (KDUFeature *feature in self.visibleFeatures) {
-        BOOL keyMatches = [feature.configKey isEqualToString:configKey];
-        BOOL identifierMatches = [feature.identifier isEqualToString:configKey];
+        BOOL keyMatches =
+            [feature.configKey isEqualToString:configKey];
+        BOOL identifierMatches =
+            [feature.identifier isEqualToString:configKey];
 
         if (keyMatches || identifierMatches) {
             matchedFeature = feature;
@@ -476,7 +577,7 @@ didSelectRowAtIndexPath:(NSIndexPath *)indexPath {
         }
     }
 
-    // 当前搜索/分类可能已经变化；若可见列表中未找到，再到完整注册表查询。
+    // 搜索结果可能已变化；必要时从完整注册表查找。
     if (!matchedFeature) {
         NSArray<KDUFeature *> *allFeatures =
             [[KDUFeatureRegistry shared]
@@ -514,20 +615,23 @@ didSelectRowAtIndexPath:(NSIndexPath *)indexPath {
     }
 }
 
-#pragma mark Tools
+#pragma mark - Tools
 
 - (void)showTools {
     UIAlertController *alert =
-        [UIAlertController alertControllerWithTitle:@"K-Douyin Ultra 工具"
-                                            message:@"请选择要执行的操作。"
-                                     preferredStyle:UIAlertControllerStyleActionSheet];
+        [UIAlertController
+            alertControllerWithTitle:@"K-Douyin Ultra 工具"
+                             message:@"请选择要执行的操作。"
+                      preferredStyle:UIAlertControllerStyleActionSheet];
 
     __weak typeof(self) weakSelf = self;
 
     [alert addAction:
-        [UIAlertAction actionWithTitle:@"导出配置 JSON"
-                                 style:UIAlertActionStyleDefault
-                               handler:^(__unused UIAlertAction *action) {
+        [UIAlertAction
+            actionWithTitle:@"导出配置 JSON"
+                      style:UIAlertActionStyleDefault
+                    handler:^(__unused UIAlertAction *action) {
+
         __strong typeof(weakSelf) self = weakSelf;
         if (!self) return;
 
@@ -535,22 +639,26 @@ didSelectRowAtIndexPath:(NSIndexPath *)indexPath {
             [[KDUConfigManager shared] exportFeatureConfigJSON];
 
         if (!data) {
-            [self showMessage:@"导出失败" message:@"无法生成配置文件。"];
+            [self showMessage:@"导出失败"
+                      message:@"无法生成配置文件。"];
             return;
         }
 
         NSString *path =
             [NSTemporaryDirectory()
-                stringByAppendingPathComponent:@"K-Douyin-Ultra-config.json"];
+                stringByAppendingPathComponent:
+                    @"K-Douyin-Ultra-config.json"];
 
         if (![data writeToFile:path atomically:YES]) {
-            [self showMessage:@"导出失败" message:@"无法写入临时配置文件。"];
+            [self showMessage:@"导出失败"
+                      message:@"无法写入临时配置文件。"];
             return;
         }
 
         UIActivityViewController *share =
             [[UIActivityViewController alloc]
-                initWithActivityItems:@[[NSURL fileURLWithPath:path]]
+                initWithActivityItems:
+                    @[[NSURL fileURLWithPath:path]]
                 applicationActivities:nil];
 
         if (UI_USER_INTERFACE_IDIOM() == UIUserInterfaceIdiomPad) {
@@ -558,17 +666,22 @@ didSelectRowAtIndexPath:(NSIndexPath *)indexPath {
                 self.navigationItem.rightBarButtonItem;
         }
 
-        [self presentViewController:share animated:YES completion:nil];
+        [self presentViewController:share
+                           animated:YES
+                         completion:nil];
     }]];
 
     [alert addAction:
-        [UIAlertAction actionWithTitle:@"环境诊断"
-                                 style:UIAlertActionStyleDefault
-                               handler:^(__unused UIAlertAction *action) {
+        [UIAlertAction
+            actionWithTitle:@"环境诊断"
+                      style:UIAlertActionStyleDefault
+                    handler:^(__unused UIAlertAction *action) {
+
         __strong typeof(weakSelf) self = weakSelf;
         if (!self) return;
 
-        NSDictionary *d = [[KDUCompatibility shared] diagnostics] ?: @{};
+        NSDictionary *d =
+            [[KDUCompatibility shared] diagnostics] ?: @{};
 
         NSString *message =
             [NSString stringWithFormat:
@@ -583,59 +696,78 @@ didSelectRowAtIndexPath:(NSIndexPath *)indexPath {
                 d[@"status"] ?: @"未知"];
 
         UIAlertController *diag =
-            [UIAlertController alertControllerWithTitle:@"环境诊断"
-                                                message:message
-                                         preferredStyle:UIAlertControllerStyleAlert];
+            [UIAlertController
+                alertControllerWithTitle:@"环境诊断"
+                                 message:message
+                          preferredStyle:UIAlertControllerStyleAlert];
 
         [diag addAction:
-            [UIAlertAction actionWithTitle:@"关闭"
-                                     style:UIAlertActionStyleCancel
-                                   handler:nil]];
+            [UIAlertAction
+                actionWithTitle:@"关闭"
+                          style:UIAlertActionStyleCancel
+                        handler:nil]];
 
-        [self presentViewController:diag animated:YES completion:nil];
+        [self presentViewController:diag
+                           animated:YES
+                         completion:nil];
     }]];
 
     [alert addAction:
-        [UIAlertAction actionWithTitle:@"重置全部开关"
-                                 style:UIAlertActionStyleDestructive
-                               handler:^(__unused UIAlertAction *action) {
+        [UIAlertAction
+            actionWithTitle:@"重置全部开关"
+                      style:UIAlertActionStyleDestructive
+                    handler:^(__unused UIAlertAction *action) {
+
         __strong typeof(weakSelf) self = weakSelf;
         if (!self) return;
 
         [[KDUConfigManager shared] resetToDefaults];
-        self.liquidGlassEnabled = [[KDUConfigManager shared]
-            boolForKey:@"interface.liquidGlass"
-              fallback:YES];
+
+        self.liquidGlassEnabled =
+            [[KDUConfigManager shared]
+                boolForKey:@"interface.liquidGlass"
+                  fallback:YES];
 
         [self updateNavigationAppearance];
         [self refreshVisible];
     }]];
 
     [alert addAction:
-        [UIAlertAction actionWithTitle:@"取消"
-                                 style:UIAlertActionStyleCancel
-                               handler:nil]];
+        [UIAlertAction
+            actionWithTitle:@"取消"
+                      style:UIAlertActionStyleCancel
+                    handler:nil]];
 
     if (UI_USER_INTERFACE_IDIOM() == UIUserInterfaceIdiomPad) {
         alert.popoverPresentationController.barButtonItem =
             self.navigationItem.rightBarButtonItem;
     }
 
-    [self presentViewController:alert animated:YES completion:nil];
+    [self presentViewController:alert
+                       animated:YES
+                     completion:nil];
 }
 
-- (void)showMessage:(NSString *)title message:(NSString *)message {
+#pragma mark - Message
+
+- (void)showMessage:(NSString *)title
+            message:(NSString *)message {
+
     UIAlertController *alert =
-        [UIAlertController alertControllerWithTitle:title
-                                            message:message
-                                     preferredStyle:UIAlertControllerStyleAlert];
+        [UIAlertController
+            alertControllerWithTitle:title
+                             message:message
+                      preferredStyle:UIAlertControllerStyleAlert];
 
     [alert addAction:
-        [UIAlertAction actionWithTitle:@"确定"
-                                 style:UIAlertActionStyleCancel
-                               handler:nil]];
+        [UIAlertAction
+            actionWithTitle:@"确定"
+                      style:UIAlertActionStyleCancel
+                    handler:nil]];
 
-    [self presentViewController:alert animated:YES completion:nil];
+    [self presentViewController:alert
+                       animated:YES
+                     completion:nil];
 }
 
 @end
