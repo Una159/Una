@@ -188,10 +188,6 @@
     self.tableView.rowHeight = UITableViewAutomaticDimension;
     self.tableView.estimatedRowHeight = 96.0;
 
-    if ([NSProcessInfo processInfo].operatingSystemVersion.majorVersion >= 15) {
-        self.tableView.sectionHeaderTopPadding = 8.0;
-    }
-
     self.liquidGlassEnabled =
         [[KDUConfigManager shared] boolForKey:@"interface.liquidGlass"
                                      fallback:YES];
