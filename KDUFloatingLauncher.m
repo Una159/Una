@@ -49,6 +49,21 @@ static NSInteger const KDUFloatingTag = 0x4B445531;
     [button setTitle:@"K" forState:UIControlStateNormal];
     [button setTitleColor:UIColor.labelColor forState:UIControlStateNormal];
     button.titleLabel.font = [UIFont boldSystemFontOfSize:18];
+
+    if (@available(iOS 13.0, *)) {
+        UIVisualEffectView *blurView =
+            [[UIVisualEffectView alloc]
+                initWithEffect:[UIBlurEffect effectWithStyle:UIBlurEffectStyleSystemThinMaterial]];
+        blurView.frame = button.bounds;
+        blurView.autoresizingMask =
+            UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
+        blurView.userInteractionEnabled = NO;
+        blurView.layer.cornerRadius = 24.0;
+        blurView.layer.cornerCurve = kCACornerCurveContinuous;
+        blurView.clipsToBounds = YES;
+        [button insertSubview:blurView atIndex:0];
+        button.backgroundColor = UIColor.clearColor;
+    }
     button.accessibilityLabel = @"打开 K-Douyin Ultra 设置";
     [button addTarget:self action:@selector(openSettings) forControlEvents:UIControlEventTouchUpInside];
     [window addSubview:button];
