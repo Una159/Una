@@ -296,10 +296,9 @@
         [[UIColor.separatorColor
             colorWithAlphaComponent:enabled ? 0.30 : 0.18] CGColor];
 
-    for (UIView *subview in self.searchCapsule.subviews) {
-        if ([subview isKindOfClass:UIVisualEffectView.class]) {
-            ((UIVisualEffectView *)subview).hidden = !enabled;
-        }
+    UIView *searchBlur = [self.searchCapsule viewWithTag:0x4B445533];
+    if ([searchBlur isKindOfClass:UIVisualEffectView.class]) {
+        searchBlur.hidden = !enabled;
     }
 }
 
@@ -329,26 +328,25 @@
     self.searchCapsule.layer.borderColor =
         [[UIColor.separatorColor colorWithAlphaComponent:0.25] CGColor];
 
-    if ([self isLiquidGlassEnabled]) {
-        UIVisualEffectView *blur =
-            [[UIVisualEffectView alloc]
-                initWithEffect:[UIBlurEffect effectWithStyle:
-                    UIBlurEffectStyleSystemThinMaterial]];
+    UIVisualEffectView *searchBlur =
+        [[UIVisualEffectView alloc]
+            initWithEffect:[UIBlurEffect effectWithStyle:
+                UIBlurEffectStyleSystemThinMaterial]];
+    searchBlur.translatesAutoresizingMaskIntoConstraints = NO;
+    searchBlur.userInteractionEnabled = NO;
+    searchBlur.clipsToBounds = YES;
+    searchBlur.layer.cornerRadius = 27.0;
+    searchBlur.layer.cornerCurve = kCACornerCurveContinuous;
+    searchBlur.tag = 0x4B445533;
+    searchBlur.hidden = ![self isLiquidGlassEnabled];
+    [self.searchCapsule addSubview:searchBlur];
 
-        blur.translatesAutoresizingMaskIntoConstraints = NO;
-        blur.userInteractionEnabled = NO;
-        blur.clipsToBounds = YES;
-        blur.layer.cornerRadius = 27.0;
-        blur.layer.cornerCurve = kCACornerCurveContinuous;
-        [self.searchCapsule addSubview:blur];
-
-        [NSLayoutConstraint activateConstraints:@[
-            [blur.topAnchor constraintEqualToAnchor:self.searchCapsule.topAnchor],
-            [blur.bottomAnchor constraintEqualToAnchor:self.searchCapsule.bottomAnchor],
-            [blur.leadingAnchor constraintEqualToAnchor:self.searchCapsule.leadingAnchor],
-            [blur.trailingAnchor constraintEqualToAnchor:self.searchCapsule.trailingAnchor]
-        ]];
-    }
+    [NSLayoutConstraint activateConstraints:@[
+        [searchBlur.topAnchor constraintEqualToAnchor:self.searchCapsule.topAnchor],
+        [searchBlur.bottomAnchor constraintEqualToAnchor:self.searchCapsule.bottomAnchor],
+        [searchBlur.leadingAnchor constraintEqualToAnchor:self.searchCapsule.leadingAnchor],
+        [searchBlur.trailingAnchor constraintEqualToAnchor:self.searchCapsule.trailingAnchor]
+    ]];
 
     [self.bottomSearchContainer addSubview:self.searchCapsule];
 
