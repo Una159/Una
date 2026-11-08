@@ -188,7 +188,7 @@
     self.tableView.rowHeight = UITableViewAutomaticDimension;
     self.tableView.estimatedRowHeight = 96.0;
 
-    if (@available(iOS 15.0, *)) {
+    if ([NSProcessInfo processInfo].operatingSystemVersion.majorVersion >= 15) {
         self.tableView.sectionHeaderTopPadding = 8.0;
     }
 
