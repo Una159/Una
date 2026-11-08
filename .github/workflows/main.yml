@@ -7,7 +7,6 @@ on:
   push:
     branches:
       - main
-      - Test-Branch
       
     
       
@@ -18,7 +17,8 @@ permissions:
 jobs:
   build:
     name: Build iOS tweak
-    runs-on: macos-14
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
 
     steps:
       - name: Checkout source
@@ -30,7 +30,8 @@ jobs:
           THEOS: ${{ github.workspace }}/theos
         run: |
           set -euo pipefail
-          brew install ldid xz
+          sudo apt-get update
+          sudo apt-get install -y clang make perl curl unzip git xz-utils ldid dpkg-dev fakeroot
           git clone --recursive https://github.com/theos/theos.git "$THEOS"
           mkdir -p "$THEOS/sdks"
 
