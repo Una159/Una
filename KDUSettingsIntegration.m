@@ -3,14 +3,9 @@
 #import "KDUSettingsController.h"
 
 #import <UIKit/UIKit.h>
-#import <objc/runtime.h>
 
 static const NSInteger KDUSettingsEntryTag = 0x4B445532;
 static const void *KDUEntryContainerKey = &KDUEntryContainerKey;
-
-@interface UIViewController (KDUSettingsIntegration)
-- (void)kdu_settings_viewDidAppear:(BOOL)animated;
-@end
 
 @interface KDUSettingsIntegration ()
 + (void)inspectVisibleController:(UIViewController *)controller;
@@ -81,29 +76,6 @@ static const void *KDUEntryContainerKey = &KDUEntryContainerKey;
         [self inspectVisibleController:visible];
     }
 }
-#pragma mark - Hook installation
-
-+ (void)installHooks {
-    static dispatch_once_t onceToken;
-
-    dispatch_once(&onceToken, ^{
-        Class cls = UIViewController.class;
-
-        Method original =
-            class_getInstanceMethod(cls, @selector(viewDidAppear:));
-
-        Method replacement =
-            class_getInstanceMethod(
-                cls,
-                @selector(kdu_settings_viewDidAppear:)
-            );
-
-        if (original && replacement) {
-            method_exchangeImplementations(original, replacement);
-        }
-    });
-}
-
 #pragma mark - Inspect only the controller that appeared
 
 + (void)inspectVisibleController:(UIViewController *)controller {
@@ -451,25 +423,3 @@ static const void *KDUEntryContainerKey = &KDUEntryContainerKey;
 
 @end
 
-@implementation UIViewController (KDUSettingsIntegration)
-
-- (void)kdu_settings_viewDidAppear:(BOOL)animated {
-    // 调用交换后的原始 viewDidAppear:。
-    [self kdu_settings_viewDidAppear:animated];
-
-    // 不在当前生命周期调用栈内扫描或修改视图层级。
-    __weak UIViewController *weakSelf = self;
-
-    dispatch_async(dispatch_get_main_queue(), ^{
-        UIViewController *strongSelf = weakSelf;
-
-        if (!strongSelf) {
-            return;
-        }
-
-        [KDUSettingsIntegration
-            inspectVisibleController:strongSelf];
-    });
-}
-
-@end
