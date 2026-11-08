@@ -3,6 +3,7 @@
 #import "KDUSettingsController.h"
 
 #import <UIKit/UIKit.h>
+#import <objc/runtime.h>
 
 static const NSInteger KDUSettingsEntryTag = 0x4B445532;
 static const void *KDUEntryContainerKey = &KDUEntryContainerKey;
