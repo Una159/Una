@@ -191,7 +191,7 @@
     description.numberOfLines = 0;
     description.text = self.feature.detail ?: @"暂无功能说明。";
 
-    [self.view addSubview:card];
+    [content addSubview:card];
     [card addSubview:description];
 
     [content addSubview:status];
@@ -222,7 +222,7 @@
         [description.leadingAnchor constraintEqualToAnchor:card.leadingAnchor constant:18],
         [description.trailingAnchor constraintEqualToAnchor:card.trailingAnchor constant:-18],
         [description.bottomAnchor constraintEqualToAnchor:card.bottomAnchor constant:-18],
-        [card.bottomAnchor constraintEqualToAnchor:content.bottomAnchor]
+
     ]];
 
     if (self.feature.implemented) {
@@ -258,7 +258,7 @@
             [toggle.centerYAnchor constraintEqualToAnchor:settingRow.centerYAnchor],
             [settingRow.bottomAnchor constraintEqualToAnchor:content.bottomAnchor]
         ]];
-        [constraints removeObject:[card.bottomAnchor constraintEqualToAnchor:content.bottomAnchor]];
+
     } else {
         UILabel *notice = [UILabel new];
         notice.translatesAutoresizingMaskIntoConstraints = NO;
@@ -273,7 +273,7 @@
             [notice.trailingAnchor constraintEqualToAnchor:content.trailingAnchor],
             [notice.bottomAnchor constraintEqualToAnchor:content.bottomAnchor]
         ]];
-        [constraints removeObject:[card.bottomAnchor constraintEqualToAnchor:content.bottomAnchor]];
+
     }
 
     [NSLayoutConstraint activateConstraints:constraints];
