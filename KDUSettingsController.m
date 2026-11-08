@@ -138,6 +138,157 @@
 
 @end
 
+#pragma mark - Feature Detail Controller
+
+@interface KDUFeatureDetailController : UIViewController
+@property (nonatomic, strong) KDUFeature *feature;
+@end
+
+@implementation KDUFeatureDetailController
+
+- (void)viewDidLoad {
+    [super viewDidLoad];
+    self.title = self.feature.title ?: @"功能详情";
+    self.view.backgroundColor = UIColor.systemGroupedBackgroundColor;
+
+    UIScrollView *scrollView = [UIScrollView new];
+    scrollView.translatesAutoresizingMaskIntoConstraints = NO;
+    [self.view addSubview:scrollView];
+
+    UIView *content = [UIView new];
+    content.translatesAutoresizingMaskIntoConstraints = NO;
+    [scrollView addSubview:content];
+
+    UILabel *status = [UILabel new];
+    status.translatesAutoresizingMaskIntoConstraints = NO;
+    status.font = [UIFont systemFontOfSize:12 weight:UIFontWeightSemibold];
+    status.text = self.feature.implemented ? @"已实现 · 可以使用" : @"开发中 · 暂不可用";
+    status.textColor = self.feature.implemented ? UIColor.systemGreenColor : UIColor.secondaryLabelColor;
+
+    UILabel *title = [UILabel new];
+    title.translatesAutoresizingMaskIntoConstraints = NO;
+    title.font = [UIFont systemFontOfSize:23 weight:UIFontWeightBold];
+    title.textColor = UIColor.labelColor;
+    title.numberOfLines = 0;
+    title.text = self.feature.title ?: @"未命名功能";
+
+    UILabel *category = [UILabel new];
+    category.translatesAutoresizingMaskIntoConstraints = NO;
+    category.font = [UIFont systemFontOfSize:13 weight:UIFontWeightMedium];
+    category.textColor = UIColor.secondaryLabelColor;
+    category.text = [NSString stringWithFormat:@"分类  %@", self.feature.category ?: @"未分类"];
+
+    UIView *card = [UIView new];
+    card.translatesAutoresizingMaskIntoConstraints = NO;
+    card.backgroundColor = UIColor.secondarySystemGroupedBackgroundColor;
+    card.layer.cornerRadius = 18.0;
+    card.layer.cornerCurve = kCACornerCurveContinuous;
+
+    UILabel *description = [UILabel new];
+    description.translatesAutoresizingMaskIntoConstraints = NO;
+    description.font = [UIFont systemFontOfSize:15];
+    description.textColor = UIColor.secondaryLabelColor;
+    description.numberOfLines = 0;
+    description.text = self.feature.detail ?: @"暂无功能说明。";
+
+    [self.view addSubview:card];
+    [card addSubview:description];
+
+    [content addSubview:status];
+    [content addSubview:title];
+    [content addSubview:category];
+
+    NSMutableArray<NSLayoutConstraint *> *constraints = [NSMutableArray arrayWithArray:@[
+        [scrollView.topAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.topAnchor],
+        [scrollView.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor],
+        [scrollView.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor],
+        [scrollView.bottomAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.bottomAnchor],
+        [content.topAnchor constraintEqualToAnchor:scrollView.contentLayoutGuide.topAnchor constant:28],
+        [content.leadingAnchor constraintEqualToAnchor:scrollView.contentLayoutGuide.leadingAnchor constant:22],
+        [content.trailingAnchor constraintEqualToAnchor:scrollView.contentLayoutGuide.trailingAnchor constant:-22],
+        [content.bottomAnchor constraintEqualToAnchor:scrollView.contentLayoutGuide.bottomAnchor constant:-24],
+        [content.widthAnchor constraintEqualToAnchor:scrollView.frameLayoutGuide.widthAnchor constant:-44],
+        [status.topAnchor constraintEqualToAnchor:content.topAnchor],
+        [status.leadingAnchor constraintEqualToAnchor:content.leadingAnchor],
+        [title.topAnchor constraintEqualToAnchor:status.bottomAnchor constant:12],
+        [title.leadingAnchor constraintEqualToAnchor:content.leadingAnchor],
+        [title.trailingAnchor constraintEqualToAnchor:content.trailingAnchor],
+        [category.topAnchor constraintEqualToAnchor:title.bottomAnchor constant:10],
+        [category.leadingAnchor constraintEqualToAnchor:content.leadingAnchor],
+        [card.topAnchor constraintEqualToAnchor:category.bottomAnchor constant:24],
+        [card.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor constant:22],
+        [card.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor constant:-22],
+        [description.topAnchor constraintEqualToAnchor:card.topAnchor constant:18],
+        [description.leadingAnchor constraintEqualToAnchor:card.leadingAnchor constant:18],
+        [description.trailingAnchor constraintEqualToAnchor:card.trailingAnchor constant:-18],
+        [description.bottomAnchor constraintEqualToAnchor:card.bottomAnchor constant:-18],
+        [card.bottomAnchor constraintEqualToAnchor:content.bottomAnchor]
+    ]];
+
+    if (self.feature.implemented) {
+        UIView *settingRow = [UIView new];
+        settingRow.translatesAutoresizingMaskIntoConstraints = NO;
+        settingRow.backgroundColor = UIColor.secondarySystemGroupedBackgroundColor;
+        settingRow.layer.cornerRadius = 16.0;
+
+        UILabel *settingTitle = [UILabel new];
+        settingTitle.translatesAutoresizingMaskIntoConstraints = NO;
+        settingTitle.font = [UIFont systemFontOfSize:16 weight:UIFontWeightSemibold];
+        settingTitle.textColor = UIColor.labelColor;
+        settingTitle.text = @"启用此功能";
+
+        UISwitch *toggle = [UISwitch new];
+        toggle.translatesAutoresizingMaskIntoConstraints = NO;
+        toggle.on = [[KDUConfigManager shared] boolForKey:self.feature.configKey fallback:self.feature.defaultEnabled];
+        toggle.onTintColor = UIColor.systemGreenColor;
+        toggle.accessibilityIdentifier = self.feature.configKey;
+        [toggle addTarget:self action:@selector(featureToggleChanged:) forControlEvents:UIControlEventValueChanged];
+
+        [content addSubview:settingRow];
+        [settingRow addSubview:settingTitle];
+        [settingRow addSubview:toggle];
+        [constraints addObjectsFromArray:@[
+            [settingRow.topAnchor constraintEqualToAnchor:card.bottomAnchor constant:16],
+            [settingRow.leadingAnchor constraintEqualToAnchor:content.leadingAnchor],
+            [settingRow.trailingAnchor constraintEqualToAnchor:content.trailingAnchor],
+            [settingRow.heightAnchor constraintEqualToConstant:64],
+            [settingTitle.leadingAnchor constraintEqualToAnchor:settingRow.leadingAnchor constant:16],
+            [settingTitle.centerYAnchor constraintEqualToAnchor:settingRow.centerYAnchor],
+            [toggle.trailingAnchor constraintEqualToAnchor:settingRow.trailingAnchor constant:-14],
+            [toggle.centerYAnchor constraintEqualToAnchor:settingRow.centerYAnchor],
+            [settingRow.bottomAnchor constraintEqualToAnchor:content.bottomAnchor]
+        ]];
+        [constraints removeObject:[card.bottomAnchor constraintEqualToAnchor:content.bottomAnchor]];
+    } else {
+        UILabel *notice = [UILabel new];
+        notice.translatesAutoresizingMaskIntoConstraints = NO;
+        notice.font = [UIFont systemFontOfSize:13];
+        notice.textColor = UIColor.secondaryLabelColor;
+        notice.numberOfLines = 0;
+        notice.text = @"此功能尚未完成，因此不会显示可操作的开关。待适配并通过验证后才会开放。";
+        [content addSubview:notice];
+        [constraints addObjectsFromArray:@[
+            [notice.topAnchor constraintEqualToAnchor:card.bottomAnchor constant:14],
+            [notice.leadingAnchor constraintEqualToAnchor:content.leadingAnchor],
+            [notice.trailingAnchor constraintEqualToAnchor:content.trailingAnchor],
+            [notice.bottomAnchor constraintEqualToAnchor:content.bottomAnchor]
+        ]];
+        [constraints removeObject:[card.bottomAnchor constraintEqualToAnchor:content.bottomAnchor]];
+    }
+
+    [NSLayoutConstraint activateConstraints:constraints];
+}
+
+- (void)featureToggleChanged:(UISwitch *)sender {
+    if (!self.feature.implemented) {
+        sender.on = NO;
+        return;
+    }
+    [[KDUConfigManager shared] setBool:sender.isOn forKey:self.feature.configKey];
+}
+
+@end
+
 #pragma mark - Settings Controller
 
 @interface KDUSettingsController () <UITextFieldDelegate>
@@ -622,40 +773,29 @@
         return cell;
     }
 
-    cell.selectionStyle = UITableViewCellSelectionStyleNone;
+    cell.selectionStyle = UITableViewCellSelectionStyleDefault;
 
     KDUFeature *feature = self.visibleFeatures[indexPath.row];
 
     cell.titleLabel.text =
         [NSString stringWithFormat:@"%@ · %@",
             feature.title ?: @"未命名功能",
-            feature.implemented ? @"已实现" : @"待实现"];
+            feature.implemented ? @"已实现" : @"开发中"];
 
     cell.titleLabel.textColor = feature.implemented
         ? UIColor.labelColor
         : UIColor.secondaryLabelColor;
 
-    cell.detailLabel.text = feature.detail ?: @"";
-
-    UISwitch *toggle = [UISwitch new];
-    toggle.on = [[KDUConfigManager shared]
-        boolForKey:feature.configKey
-          fallback:feature.defaultEnabled];
-
     BOOL isGlassSetting =
         [feature.identifier isEqualToString:@"interface.liquidGlass"];
-
-    toggle.enabled = feature.implemented || isGlassSetting;
-    toggle.alpha = toggle.enabled ? 1.0 : 0.45;
-    toggle.accessibilityLabel = feature.title ?: @"功能开关";
-    toggle.accessibilityIdentifier = feature.configKey ?: feature.identifier;
-    toggle.onTintColor = UIColor.systemGreenColor;
-
-    [toggle addTarget:self
-               action:@selector(toggleChanged:)
-     forControlEvents:UIControlEventValueChanged];
-
-    cell.accessoryView = toggle;
+    BOOL currentValue = [[KDUConfigManager shared]
+        boolForKey:feature.configKey
+          fallback:feature.defaultEnabled];
+    NSString *state = feature.implemented
+        ? (currentValue ? @"当前已开启" : @"当前已关闭")
+        : @"尚未开放";
+    cell.detailLabel.text = [NSString stringWithFormat:@"%@\n%@", state, feature.detail ?: @""];
+    cell.accessoryType = UITableViewCellAccessoryDisclosureIndicator;
     return cell;
 }
 
@@ -665,7 +805,16 @@
 didSelectRowAtIndexPath:(NSIndexPath *)indexPath {
     [tableView deselectRowAtIndexPath:indexPath animated:YES];
 
-    if (indexPath.section != 0 || self.categories.count == 0) return;
+    if (indexPath.section == 1) {
+        if (indexPath.row >= self.visibleFeatures.count) return;
+        [self.searchField resignFirstResponder];
+        KDUFeatureDetailController *detail = [KDUFeatureDetailController new];
+        detail.feature = self.visibleFeatures[indexPath.row];
+        [self.navigationController pushViewController:detail animated:YES];
+        return;
+    }
+
+    if (self.categories.count == 0) return;
 
     [self.searchField resignFirstResponder];
 
