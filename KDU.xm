@@ -138,6 +138,7 @@ static void KDUWriteHomeDiagnostics(UIViewController *controller) {
 
     dispatch_async(dispatch_get_main_queue(), ^{
         KDUWriteHomeDiagnostics(self);
+        [[KDUFloatingLauncher shared] installIfNeeded];
         [KDUSettingsIntegration scanForSettingsPage];
     });
 }
