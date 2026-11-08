@@ -4,7 +4,6 @@ NS_ASSUME_NONNULL_BEGIN
 
 @interface KDUSettingsIntegration : NSObject
 
-+ (void)installHooks;
 + (void)scanForSettingsPage;
 
 @end
