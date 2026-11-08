@@ -1,5 +1,6 @@
 #import "KDUFloatingLauncher.h"
 #import <UIKit/UIKit.h>
+#import <QuartzCore/QuartzCore.h>
 #import "KDUConfigManager.h"
 #import "KDUFeatureRegistry.h"
 #import "KDUCompatibility.h"
