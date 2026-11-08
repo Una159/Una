@@ -124,7 +124,6 @@ static void KDUWriteHomeDiagnostics(UIViewController *controller) {
             [[KDUConfigManager shared] loadDefaultsIfNeeded];
             [[KDUFeatureRegistry shared] registerBuiltInFeatures];
             [[KDUCompatibility shared] refreshDiagnostics];
-            [KDUSettingsIntegration installHooks];
             [[KDUFloatingLauncher shared] installIfNeeded];
         });
     }
@@ -139,6 +138,7 @@ static void KDUWriteHomeDiagnostics(UIViewController *controller) {
 
     dispatch_async(dispatch_get_main_queue(), ^{
         KDUWriteHomeDiagnostics(self);
+        [KDUSettingsIntegration scanForSettingsPage];
     });
 }
 
