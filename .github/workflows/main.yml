@@ -31,11 +31,13 @@ jobs:
         run: |
           set -euo pipefail
           sudo apt-get update
-          sudo apt-get install -y clang make perl curl unzip git xz-utils dpkg-dev fakeroot
-          curl --retry 3 --retry-delay 2 -fL https://github.com/ProcursusTeam/ldid/releases/download/v2.1.5-procursus7/ldid_linux_x86_64 -o /usr/local/bin/ldid
-          sudo chmod 755 /usr/local/bin/ldid
-          ldid -h >/dev/null 2>&1 || true
+          sudo apt-get install -y make perl curl unzip git xz-utils dpkg-dev fakeroot
           git clone --recursive https://github.com/theos/theos.git "$THEOS"
+          mkdir -p "$THEOS/toolchain"
+          curl --retry 3 --retry-delay 2 -fL https://github.com/L1ghtmann/llvm-project/releases/download/test-210562a/iOSToolchain-x86_64.tar.xz -o /tmp/ios-toolchain.tar.xz
+          tar -xJf /tmp/ios-toolchain.tar.xz -C "$THEOS/toolchain"
+          test -x "$THEOS/toolchain/linux/iphone/bin/clang"
+          test -x "$THEOS/toolchain/linux/iphone/bin/ldid"
           mkdir -p "$THEOS/sdks"
 
           TMP_DIR="$(mktemp -d)"
