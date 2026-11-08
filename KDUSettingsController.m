@@ -786,8 +786,6 @@
         ? UIColor.labelColor
         : UIColor.secondaryLabelColor;
 
-    BOOL isGlassSetting =
-        [feature.identifier isEqualToString:@"interface.liquidGlass"];
     BOOL currentValue = [[KDUConfigManager shared]
         boolForKey:feature.configKey
           fallback:feature.defaultEnabled];
