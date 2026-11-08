@@ -83,7 +83,13 @@ jobs:
           set -euo pipefail
           mkdir -p dist
           find packages -type f -name '*.deb' -exec cp {} dist/ \; 2>/dev/null || true
-          find .theos -type f -name 'KDouyinUltra.dylib' -exec cp {} dist/ \; 2>/dev/null || true
+          DEB_FILE="$(find dist -maxdepth 1 -type f -name '*.deb' -print -quit)"
+          if [ -n "$DEB_FILE" ]; then
+            PACKAGE_ROOT="$(mktemp -d)"
+            dpkg-deb -x "$DEB_FILE" "$PACKAGE_ROOT"
+            cp "$PACKAGE_ROOT/Library/MobileSubstrate/DynamicLibraries/KDouyinUltra.dylib" dist/
+            rm -rf "$PACKAGE_ROOT"
+          fi
           echo "Build outputs:"
           find dist -maxdepth 1 -type f -print
           if [ -z "$(find dist -maxdepth 1 -type f -print -quit)" ]; then
