@@ -61,7 +61,7 @@ final class AudioPlayer: NSObject, ObservableObject, AVAudioPlayerDelegate {
         currentFileResolver = resolver
     }
 
-    func play(_ track: Track, from tracks: [Track], fileURL: (Track) -> URL) {
+    func play(_ track: Track, from tracks: [Track], fileURL: @escaping (Track) -> URL) {
         currentFileResolver = fileURL
         originalQueue = tracks
         queue = tracks
@@ -162,11 +162,14 @@ final class AudioPlayer: NSObject, ObservableObject, AVAudioPlayerDelegate {
         UIApplication.shared.beginReceivingRemoteControlEvents()
     }
 
-    func audioPlayerDidFinishPlaying(_ player: AVAudioPlayer, successfully flag: Bool) {
-        if repeatMode == .one, let track = currentTrack {
-            playAt(queue.firstIndex(of: track) ?? 0)
-        } else {
-            next()
+    nonisolated func audioPlayerDidFinishPlaying(_ player: AVAudioPlayer, successfully flag: Bool) {
+        Task { @MainActor [weak self] in
+            guard let self else { return }
+            if self.repeatMode == .one, let track = self.currentTrack {
+                self.playAt(self.queue.firstIndex(of: track) ?? 0)
+            } else {
+                self.next()
+            }
         }
     }
 }
