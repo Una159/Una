@@ -1,0 +1,67 @@
+name: Una iOS Build
+
+on:
+  push:
+    branches:
+      - feature/una-ios-xcode
+    paths:
+      - "UnaMusicPlayer/**"
+      - ".github/workflows/una-ios-build.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Build Una for iOS Simulator
+    runs-on: macos-15
+    timeout-minutes: 45
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Select Xcode
+        run: |
+          set -euo pipefail
+          xcode-select -p
+          xcodebuild -version
+
+      - name: Validate project
+        run: |
+          set -euo pipefail
+          test -f UnaMusicPlayer/Una.xcodeproj/project.pbxproj
+          test -f UnaMusicPlayer/Una/ContentView.swift
+          plutil -lint UnaMusicPlayer/Una/Info.plist
+          python3 -m json.tool UnaMusicPlayer/Una/Assets.xcassets/Contents.json >/dev/null
+
+      - name: Build simulator app
+        run: |
+          set -o pipefail
+          xcodebuild \
+            -project UnaMusicPlayer/Una.xcodeproj \
+            -scheme Una \
+            -configuration Release \
+            -destination 'generic/platform=iOS Simulator' \
+            -derivedDataPath "$RUNNER_TEMP/UnaDerivedData" \
+            CODE_SIGNING_ALLOWED=NO \
+            build | tee "$RUNNER_TEMP/una-build.log"
+
+      - name: Package outputs
+        run: |
+          set -euo pipefail
+          mkdir -p dist
+          APP_PATH="$RUNNER_TEMP/UnaDerivedData/Build/Products/Release-iphonesimulator/Una.app"
+          test -d "$APP_PATH"
+          ditto -c -k --sequesterRsrc --keepParent "$APP_PATH" dist/Una-iOS-Simulator.app.zip
+          ditto -c -k --sequesterRsrc --keepParent UnaMusicPlayer dist/Una-Xcode-Project.zip
+          cp "$RUNNER_TEMP/una-build.log" dist/Build.log
+          ls -lah dist
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: Una-iOS-Build
+          path: dist/*
+          if-no-files-found: error
+          retention-days: 14
