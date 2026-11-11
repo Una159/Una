@@ -38,8 +38,8 @@ globalThis.fetch = async (input, init = {}) => {
   if (url.hostname === "go-api.example" && url.pathname === "/api/v1/music/lyric") return Response.json({ code: 200, data: { lyric: "[00:01.00]统一歌词" } });
   if (url.hostname === "go-api.example" && url.pathname === "/api/v1/playlist/user") return Response.json({ code: 200, data: { playlists: [{ id: "pl-1", name: "测试歌单" }] } });
   if (url.hostname === "go-api.example" && url.pathname === "/api/v1/playlist/detail") return Response.json({ code: 200, data: { songs: [{ id: "go-1", name: "统一接口测试", artist: "测试歌手" }] } });
-  if (url.hostname === "go-api.example" && url.pathname === "/api/v1/system/qr_login/netease" && init.method === "POST") return Response.json({ code: 200, data: { key: "go-qr-key", url: "https://login.example/go-qr", image_url: "data:image/png;base64,abc" } });
-  if (url.hostname === "go-api.example" && url.pathname === "/api/v1/system/qr_login/netease") return Response.json({ code: 200, data: { status: "success", cookie: "DO_NOT_LEAK" } });
+  if (url.hostname === "go-api.example" && url.pathname.startsWith("/api/v1/system/qr_login/") && init.method === "POST") return Response.json({ code: 200, data: { key: `qr-${url.pathname.split("/").pop()}`, url: "https://login.example/go-qr", image_url: "data:image/png;base64,abc" } });
+  if (url.hostname === "go-api.example" && url.pathname.startsWith("/api/v1/system/qr_login/")) return Response.json({ code: 200, data: { status: "success", cookie: "DO_NOT_LEAK" } });
   if (url.pathname === "/login/qr/key" && url.hostname === "netease.example") return Response.json({ data: { unikey: "ne-key" } });
   if (url.pathname === "/login/qr/key" && url.hostname === "kugou.example") return Response.json({ data: { qrcode: "kg-key" } });
   if (url.pathname === "/login/qr/create") return Response.json({ data: { url: "https://login.example/qr", qrurl: "https://login.example/qr", qrimg: "aGVsbG8=" } });
