@@ -258,6 +258,7 @@ struct GatewayMusicView: View {
     @State private var selectedLyrics: String?
     @StateObject private var audioController = UnaRemoteAudioController.shared
     @State private var qrSession: UnaGatewayQRSession?
+    @State private var qrPollingTask: Task<Void, Never>?
     @State private var qrStatus = "尚未登录"
     @State private var cookie: String?
     @State private var isLoading = false
@@ -297,6 +298,7 @@ struct GatewayMusicView: View {
             cookie = UnaCredentialVault.read("cookie-\(provider.rawValue)")
         }
         .onChange(of: provider) { _, value in
+            cancelQRLogin()
             cookie = UnaCredentialVault.read("cookie-\(value.rawValue)")
             qrSession = nil
             qrStatus = cookie == nil ? "尚未登录" : "已保存登录凭证"
@@ -370,7 +372,7 @@ struct GatewayMusicView: View {
             if let qrSession {
                 QRCodePreview(session: qrSession)
                 Text("请使用对应平台官方 App 扫描二维码。").font(.system(size: 11)).foregroundStyle(.white.opacity(0.45))
-                Button("取消二维码") { self.qrSession = nil }
+                Button("取消二维码") { cancelQRLogin() }
                     .font(.system(size: 11)).foregroundStyle(.white.opacity(0.5))
             }
             if cookie != nil {
@@ -519,7 +521,16 @@ struct GatewayMusicView: View {
     }
 
     @MainActor
+    private func cancelQRLogin() {
+        qrPollingTask?.cancel()
+        qrPollingTask = nil
+        qrSession = nil
+        if cookie == nil { qrStatus = "已取消扫码" }
+    }
+
+    @MainActor
     private func startQRLogin() async {
+        cancelQRLogin()
         isLoading = true; errorMessage = nil
         defer { isLoading = false }
         do {
@@ -527,10 +538,16 @@ struct GatewayMusicView: View {
             qrSession = session
             qrStatus = "等待扫码"
             let providerAtStart = provider
-            Task { @MainActor in
+            qrPollingTask = Task { @MainActor in
                 for _ in 0..<90 {
-                    try? await Task.sleep(nanoseconds: 2_000_000_000)
-                    guard provider == providerAtStart, qrSession?.session == session.session else { return }
+                    do {
+                        try await Task.sleep(nanoseconds: 2_000_000_000)
+                    } catch {
+                        return
+                    }
+                    guard !Task.isCancelled,
+                          provider == providerAtStart,
+                          qrSession?.session == session.session else { return }
                     do {
                         let state = try await makeClient().checkQRLogin(provider: providerAtStart, sessionID: session.session)
                         qrStatus = state.status
@@ -545,18 +562,22 @@ struct GatewayMusicView: View {
                             cookie = credential
                             qrStatus = "登录成功，凭证已安全保存"
                             qrSession = nil
+                            qrPollingTask = nil
                             return
                         }
                         if ["expired", "failed", "refused"].contains(state.status.lowercased()) {
                             qrStatus = state.message ?? "二维码已失效"
+                            qrPollingTask = nil
                             return
                         }
                     } catch {
-                        errorMessage = error.localizedDescription
+                        if !Task.isCancelled { errorMessage = error.localizedDescription }
+                        qrPollingTask = nil
                         return
                     }
                 }
                 if qrSession?.session == session.session { qrStatus = "二维码轮询超时，请重新生成" }
+                qrPollingTask = nil
             }
         } catch { errorMessage = error.localizedDescription }
     }
