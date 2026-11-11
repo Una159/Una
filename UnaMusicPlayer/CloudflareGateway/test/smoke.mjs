@@ -169,11 +169,14 @@ try {
   assert.equal(sharedPlaylist.data[0].name, "测试歌单");
   const sharedTracks = await (await sharedCall("/una/v1/netease/playlist/tracks?id=pl-1")).json();
   assert.equal(sharedTracks.data[0].title, "统一接口测试");
-  const sharedQR = await (await sharedCall("/una/auth/netease/qr/create")).json();
-  assert.equal(sharedQR.session, "qr-netease");
-  const sharedQRStatus = await (await sharedCall(`/una/auth/netease/qr/check?session=${sharedQR.session}`)).json();
-  assert.equal(sharedQRStatus.status, "success");
-  assert.equal("credential" in sharedQRStatus, false);
+  for (const provider of ["netease", "qqmusic", "kugou"]) {
+    const source = provider === "qqmusic" ? "qq" : provider;
+    const sharedQR = await (await sharedCall(`/una/auth/${provider}/qr/create`)).json();
+    assert.equal(sharedQR.session, `qr-${source}`);
+    const sharedQRStatus = await (await sharedCall(`/una/auth/${provider}/qr/check?session=${sharedQR.session}`)).json();
+    assert.equal(sharedQRStatus.status, "success");
+    assert.equal("credential" in sharedQRStatus, false);
+  }
 
   console.log("Una gateway smoke tests passed");
 } finally {
