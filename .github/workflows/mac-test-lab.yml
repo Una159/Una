@@ -1,0 +1,37 @@
+name: K-Douyin Ultra Mac Test Lab
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+    paths:
+      - 'KDU*.m'
+      - 'KDU*.h'
+      - 'KDU.xm'
+      - 'Makefile'
+      - 'KDouyinUltra.plist'
+      - 'scripts/**'
+      - 'Tests/SimulatorLab/**'
+      - 'docs/REAL_DEVICE_INJECTION.md'
+
+permissions:
+  contents: read
+
+jobs:
+  mac-preflight:
+    name: macOS and iOS Simulator preflight
+    runs-on: macos-15
+    timeout-minutes: 15
+    steps:
+      - name: Checkout main
+        uses: actions/checkout@v4
+      - name: Inspect Xcode and simulator environment
+        run: |
+          xcodebuild -version
+          xcrun --sdk iphonesimulator --show-sdk-path
+          xcrun simctl list devices available
+      - name: Run Mac test lab preflight
+        run: bash scripts/mac-test-lab.sh
+      - name: Validate DEB checker syntax
+        run: bash -n scripts/device-package-check.sh
