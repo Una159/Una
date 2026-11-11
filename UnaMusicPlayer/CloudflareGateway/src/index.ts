@@ -26,7 +26,14 @@ function first(obj: any, keys: string[]): any {
   return undefined;
 }
 function rowsFrom(payload: any): any[] {
-  const candidates = [payload?.data, payload?.result?.songs, payload?.result?.playlists, payload?.songs, payload?.list, payload?.playlist, payload?.data?.list, payload?.data?.songs];
+  const candidates = [
+    payload?.data, payload?.result?.songs, payload?.result?.playlists,
+    payload?.songs, payload?.list, payload?.playlist,
+    payload?.data?.list, payload?.data?.songs, payload?.data?.info,
+    payload?.data?.lists, payload?.data?.playlists, payload?.data?.playlist,
+    payload?.data?.body?.song?.list, payload?.body?.song?.list,
+    payload?.data?.result?.songs, payload?.data?.result?.playlists
+  ];
   return candidates.find(Array.isArray) ?? [];
 }
 function normalizeTrack(row: any, provider: Provider) {
