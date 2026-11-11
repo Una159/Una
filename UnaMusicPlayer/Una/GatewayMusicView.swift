@@ -550,6 +550,9 @@ struct GatewayMusicView: View {
                           qrSession?.session == session.session else { return }
                     do {
                         let state = try await makeClient().checkQRLogin(provider: providerAtStart, sessionID: session.session)
+                        guard !Task.isCancelled,
+                              provider == providerAtStart,
+                              qrSession?.session == session.session else { return }
                         qrStatus = state.status
                         if let credential = state.credential, !credential.isEmpty {
                             do {
@@ -557,6 +560,7 @@ struct GatewayMusicView: View {
                             } catch {
                                 errorMessage = error.localizedDescription
                                 qrStatus = "登录成功，但凭证保存失败"
+                                qrPollingTask = nil
                                 return
                             }
                             cookie = credential
