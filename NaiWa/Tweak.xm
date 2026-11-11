@@ -27,7 +27,11 @@
         NSMutableArray<NSString *> *present = [NSMutableArray array];
         NSMutableArray<NSString *> *missing = [NSMutableArray array];
         for (NSString *name in candidateClasses) {
-            (NSClassFromString(name) ? present : missing).addObject(name);
+            if (NSClassFromString(name)) {
+                [present addObject:name];
+            } else {
+                [missing addObject:name];
+            }
         }
 
         NSLog(@"[NaiWa] loaded in %@ %@ (%@)", bundleIdentifier, shortVersion, buildVersion);
