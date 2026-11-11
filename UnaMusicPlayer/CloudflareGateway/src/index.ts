@@ -181,6 +181,12 @@ async function callUpstream(origin: string, path: string, method: string, incomi
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
     const url = new URL(request.url);
+    // Bound attacker-controlled request metadata before parsing or proxying it.
+    if (request.url.length > 4096) return json({ code: 414, message: "request_url_too_long" }, 414);
+    const declaredBodyLength = Number(request.headers.get("content-length") ?? 0);
+    if (Number.isFinite(declaredBodyLength) && declaredBodyLength > 16 * 1024) {
+      return json({ code: 413, message: "request_body_too_large" }, 413);
+    }
     const allowedOrigins = (env.ALLOWED_ORIGIN ?? "").split(",").map(value => value.trim()).filter(Boolean);
     const requestOrigin = request.headers.get("origin");
     const originAllowed = !requestOrigin || allowedOrigins.includes(requestOrigin);
@@ -221,7 +227,21 @@ export default {
       if (legacyNeteaseQRMatch) {
         target = { path: url.pathname + url.search, method: "GET" };
       } else if (authMatch) {
-        const body = request.method === "POST" ? await request.clone().json().catch(() => ({})) : {};
+        let body: any = {};
+        if (request.method === "POST") {
+          try {
+            const rawBody = await request.clone().text();
+            if (new TextEncoder().encode(rawBody).byteLength > 16 * 1024) {
+              return json({ code: 413, message: "request_body_too_large" }, 413, cors);
+            }
+            body = rawBody ? JSON.parse(rawBody) : {};
+            if (!body || typeof body !== "object" || Array.isArray(body)) {
+              return json({ code: 400, message: "invalid_request_body" }, 400, cors);
+            }
+          } catch {
+            return json({ code: 400, message: "invalid_request_body" }, 400, cors);
+          }
+        }
         if (provider === "kugou" && authMatch[2] === "create") {
           const keyResponse = await callUpstream(origin, `/login/qr/key?timestamp=${Date.now()}`, "GET", request);
           const keyJSON: any = await keyResponse.json().catch(() => ({}));
