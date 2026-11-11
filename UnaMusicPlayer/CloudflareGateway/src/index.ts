@@ -423,12 +423,6 @@ export default {
         return json({ status: code === 2 ? "scanned" : code === 3 ? "expired" : "waiting", message: first(data, ["message", "msg"]) ?? null }, 200, cors);
       }
       if (authMatch) {
-        if (provider === "qishui" && authMatch[2] === "create") {
-          const session = String(first(parsed, ["token", "session", "key"]) ?? first(parsed?.data, ["token", "session", "key"]) ?? "");
-          const qrUrl = first(parsed, ["qrcode_index_url", "qrcode", "qr_url", "url"]) ?? first(parsed?.data, ["qrcode_index_url", "qrcode", "qr_url", "url"]);
-          const qrImage = first(parsed, ["qrImage", "qrimg", "image"]) ?? first(parsed?.data, ["qrImage", "qrimg", "image"]);
-          return json({ session, qrUrl, qrImage, status: "waiting" }, 200, cors);
-        }
         if (provider === "qqmusic" && authMatch[2] === "create") {
           if (!env.QR_SESSIONS) return json({ code: 503, message: "qr_session_store_not_configured" }, 503, cors);
           const session = crypto.randomUUID();
@@ -446,14 +440,6 @@ export default {
             return json({ status: "success", credential: credential ?? null }, 200, cors);
           }
           return json({ status: status.includes("scan") || status === "conf" ? "scanned" : status.includes("refuse") || status.includes("timeout") ? "expired" : "waiting", message: first(data, ["message", "msg"]) ?? null }, 200, cors);
-        }
-        if (provider === "qishui" && authMatch[2] === "check") {
-          const data = parsed?.data ?? parsed;
-          const credential = first(data?.auth, ["sessionid", "session_id"]) ?? first(data, ["sessionid", "session_id", "cookie", "credential"]);
-          const rawStatus = String(first(data, ["status", "message", "msg"]) ?? "waiting").toLowerCase();
-          if (credential) return json({ status: "success", credential }, 200, cors);
-          const normalized = rawStatus.includes("scan") || rawStatus === "2" ? "scanned" : rawStatus.includes("expire") || rawStatus === "3" ? "expired" : "waiting";
-          return json({ status: normalized, message: first(data, ["message", "msg"]) ?? null }, 200, cors);
         }
         return json(parsed, 200, cors);
       }
