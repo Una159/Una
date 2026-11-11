@@ -42,6 +42,15 @@ struct UnaGatewayQRSession: Codable, Sendable {
     var status: String
 }
 
+struct UnaGatewayHealth: Decodable, Sendable {
+    struct Provider: Decodable, Sendable {
+        let id: String
+        let configured: Bool
+    }
+    let service: String
+    let providers: [Provider]
+}
+
 struct UnaGatewayQRStatus: Codable, Sendable {
     var status: String
     var credential: String?
@@ -94,6 +103,20 @@ final class UnaGatewayAPIClient: @unchecked Sendable {
             configuration.httpMaximumConnectionsPerHost = 6
             self.session = URLSession(configuration: configuration)
         }
+    }
+
+    func checkHealth() async throws -> [String: Bool] {
+        let object = try await get("/health")
+        let root = try JSONSerialization.jsonObject(with: object) as? [String: Any] ?? [:]
+        guard let data = root["data"] as? [String: Any],
+              let providers = data["providers"] as? [[String: Any]] else {
+            throw UnaGatewayError.invalidResponse
+        }
+        return Dictionary(uniqueKeysWithValues: providers.compactMap { item in
+            guard let id = item["id"] as? String,
+                  let configured = item["configured"] as? Bool else { return nil }
+            return (id, configured)
+        })
     }
 
     func search(provider: UnaMusicProvider, keywords: String, limit: Int = 20, cookie: String? = nil) async throws -> [UnaGatewayTrack] {
