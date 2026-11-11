@@ -17,6 +17,9 @@ struct UnaGatewayTrack: Codable, Identifiable, Sendable {
     var pageURL: String?
     var streamURL: String?
     var provider: UnaMusicProvider
+
+    /// Provider-scoped identity prevents identical upstream IDs colliding across services.
+    var playbackKey: String { "\(provider.rawValue):\(id)" }
 }
 
 struct UnaGatewayPlaylist: Codable, Identifiable, Sendable {
