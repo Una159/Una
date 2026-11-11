@@ -1,4 +1,4 @@
-export interface Env {
+export interface Env {\n  GO_MUSIC_API_ORIGIN?: string;\n  GO_MUSIC_API_TOKEN?: string;
   NETEASE_ORIGIN?: string;
   KUGOU_ORIGIN?: string;
   QISHUI_ORIGIN?: string;
@@ -20,7 +20,7 @@ function json(data: unknown, status = 200, extra: HeadersInit = {}) {
   return new Response(JSON.stringify(data), { status, headers: { ...JSON_HEADERS, ...extra } });
 }
 function providerOrigin(env: Env, provider: Provider): string | undefined {
-  const value = ({ netease: env.NETEASE_ORIGIN, kugou: env.KUGOU_ORIGIN, qishui: env.QISHUI_ORIGIN, qqmusic: env.QQMUSIC_ORIGIN })[provider];
+  const value = env.GO_MUSIC_API_ORIGIN ?? ({ netease: env.NETEASE_ORIGIN, kugou: env.KUGOU_ORIGIN, qishui: env.QISHUI_ORIGIN, qqmusic: env.QQMUSIC_ORIGIN })[provider];
   if (!value) return undefined;
   try {
     const u = new URL(value);
