@@ -147,6 +147,9 @@ function qrRoute(provider: Provider, kind: "qr-create" | "qr-check", q: URLSearc
   if (kind === "qr-create") return { path: `/login/qrcode`, method: "POST" as const, body: {} };
   return { path: `/login/checkQrcode`, method: "POST" as const, body: { ...(body ?? {}), token: q.get("session") ?? body?.token ?? "" } };
 }
+const UPSTREAM_TIMEOUT_MS = 15_000;
+const MAX_UPSTREAM_RESPONSE_BYTES = 4 * 1024 * 1024;
+
 async function callUpstream(origin: string, path: string, method: string, incoming: Request, body?: unknown) {
   const url = new URL(path, origin);
   const headers = new Headers({ accept: "application/json" });
@@ -155,12 +158,24 @@ async function callUpstream(origin: string, path: string, method: string, incomi
   }
   let payload: string | undefined;
   if (body !== undefined) { headers.set("content-type", "application/json"); payload = JSON.stringify(body); }
-  const response = await fetch(url, { method, headers, body: method === "GET" ? undefined : payload, redirect: "manual" });
-  const text = await response.text();
-  const responseHeaders = new Headers({ "content-type": response.headers.get("content-type") ?? "application/json", "cache-control": "no-store" });
-  const setCookie = response.headers.get("set-cookie");
-  if (setCookie) responseHeaders.set("set-cookie", setCookie);
-  return new Response(text, { status: response.status, headers: responseHeaders });
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort("upstream_timeout"), UPSTREAM_TIMEOUT_MS);
+  try {
+    const response = await fetch(url, { method, headers, body: method === "GET" ? undefined : payload, redirect: "manual", signal: controller.signal });
+    const declaredLength = Number(response.headers.get("content-length") ?? 0);
+    if (declaredLength > MAX_UPSTREAM_RESPONSE_BYTES) {
+      await response.body?.cancel();
+      throw new Error("upstream_response_too_large");
+    }
+    const bytes = await response.arrayBuffer();
+    if (bytes.byteLength > MAX_UPSTREAM_RESPONSE_BYTES) throw new Error("upstream_response_too_large");
+    const responseHeaders = new Headers({ "content-type": response.headers.get("content-type") ?? "application/json", "cache-control": "no-store" });
+    const setCookie = response.headers.get("set-cookie");
+    if (setCookie) responseHeaders.set("set-cookie", setCookie);
+    return new Response(bytes, { status: response.status, headers: responseHeaders });
+  } finally {
+    clearTimeout(timeout);
+  }
 }
 
 export default {
