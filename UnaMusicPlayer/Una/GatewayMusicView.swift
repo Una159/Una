@@ -304,6 +304,8 @@ struct GatewayMusicView: View {
         defer { isLoading = false }
         do {
             let url = try await makeClient().songURL(provider: provider, id: track.id, cookie: cookie)
+            try AVAudioSession.sharedInstance().setCategory(.playback, mode: .default, options: [])
+            try AVAudioSession.sharedInstance().setActive(true)
             let nextPlayer = AVPlayer(url: url)
             remotePlayer?.pause()
             remotePlayer = nextPlayer
