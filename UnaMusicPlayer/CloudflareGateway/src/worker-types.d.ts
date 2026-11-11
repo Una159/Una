@@ -3,3 +3,7 @@ interface KVNamespace {
   put(key: string, value: string, options?: { expirationTtl?: number; expiration?: number; metadata?: unknown }): Promise<void>;
   delete(key: string): Promise<void>;
 }
+
+interface RateLimitBinding {
+  limit(options: { key: string }): Promise<{ success: boolean }>;
+}
