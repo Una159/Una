@@ -396,15 +396,18 @@ export default {
       if (env.GO_MUSIC_API_ORIGIN && authMatch) {
         const data = parsed?.data ?? parsed;
         const credential = first(data, ["cookie", "credential", "token", "tokenstr"]);
-        const statusCode = Number(parsed?.code ?? data?.code ?? 0);
+        const rawStatus = String(first(data, ["status", "message", "msg"]) ?? "").toLowerCase();
         if (authMatch[2] === "create") {
-          const session = String(first(data, ["key", "unikey", "token", "session"]) ?? "");
+          const session = String(first(data, ["key", "unikey", "token", "session", "qr_key"]) ?? "");
           const qrUrl = first(data, ["url", "qrurl", "qrcode_url", "qr_url"]);
-          const qrImage = first(data, ["qrimg", "qrcode", "qrImage", "image"]);
-          return json({ session, qrUrl, qrImage, status: "waiting", raw: data }, 200, cors);
+          const qrImage = first(data, ["qrimg", "qrcode", "qrImage", "image", "image_url"]);
+          if (!session || (!qrUrl && !qrImage)) return json({ code: 502, message: "upstream_qr_payload_incomplete", provider }, 502, cors);
+          return json({ session, qrUrl: qrUrl ?? null, qrImage: qrImage ?? null, status: "waiting" }, 200, cors);
         }
-        if (credential || statusCode === 200 && (data?.status === "success" || data?.status === "done")) return json({ status: "success" }, 200, cors);
-        return json({ status: data?.status === "scanned" ? "scanned" : data?.status === "expired" ? "expired" : "waiting", raw: data }, 200, cors);
+        if (credential || ["success", "done", "logged_in", "authorized"].includes(rawStatus)) return json({ status: "success" }, 200, cors);
+        if (rawStatus.includes("scan") || rawStatus === "801" || rawStatus === "2") return json({ status: "scanned" }, 200, cors);
+        if (rawStatus.includes("expire") || rawStatus.includes("refuse") || rawStatus === "802" || rawStatus === "3") return json({ status: "expired" }, 200, cors);
+        return json({ status: "waiting" }, 200, cors);
       }
       if (authMatch && provider === "netease" && authMatch[2] === "check") {
         const code = Number(parsed?.code ?? parsed?.data?.code ?? 0);
