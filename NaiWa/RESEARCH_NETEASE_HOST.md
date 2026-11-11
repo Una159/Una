@@ -77,3 +77,44 @@
 - 旧项目的网易云 4.x selector 不能视为当前版本兼容依据。
 - NaiWa 中的授权/设备签名逻辑属于合法授权验证范围；重建时不绕过授权或伪造授权响应。
 - 不会将尚未编译或未在设备验证的功能标记为已完成。
+
+
+## 4. lcmovie/music163_cads（当前版本宿主参考，优先级最高）
+
+- 地址：https://github.com/lcmovie/music163_cads
+- 仓库创建于 2026-10-19，最新公开 Release 为 `v2.0.0`（2026-10-20）。
+- README 明确记录测试目标：网易云音乐 `9.6.09 (7516)`；测试环境为 iOS 16.0 / ARM64 / TrollStore / TrollFools。其他版本未验证。
+- 这是近期的 Objective-C 插件源码，提供广告模块、设置入口、React Native 页面识别、宿主方法签名检查、Hook 安装诊断和构建/静态审计工具。
+- 该项目不是 NaiWa，也不是 NaiWa 的源码；它是目前找到的最接近当前网易云宿主版本的公开参考。
+- 仓库未声明开源许可证，不能默认将其源码复制或合并进 NaiWa 重建工程；当前仅使用可公开核对的类名、selector、测试版本和架构信息作为研究线索。
+
+### 与 NaiWa 二进制直接重合的类名/标识
+
+从 NaiWa 的字符串表中已确认：
+- `NMSettingTabViewController`
+- `NMRCTPageViewController`
+- `NMAppDelegate`
+- `NMTabBarController`
+- `NMMainViewController`
+- `NMMineTabRCTViewController`
+
+music163_cads 源码直接引用：
+- `NMSettingTabViewController`：设置页通知权限判断。
+- `NMRCTPageViewController`：RN 页面生命周期 Hook。
+- `NEReactViewController`：RN 页面基类探测（NaiWa 的字符串表需进一步确认是否存在）。
+- `RCTUIManager`：在 RN mounting batch 中挂载设置入口。
+- `NMSearchAdvertisementCell`、`NMSearchHomeAdCollectionViewCell`、`RNSearchAdView` 等较新广告组件。
+- `NMLaunchAdViewManager`、`NMAdvertisementManager` 等启动广告管理类。
+
+其中 `NMSettingTabViewController` 与 `NMRCTPageViewController` 是已确认的交集；不能把该仓库的广告 Hook 直接等同于 NaiWa 的视觉 Hook。
+
+### 研究价值
+
+1. 为 NaiWa 的原生设置入口提供较新的页面识别与 RN 生命周期线索。
+2. 为设置入口在 React Native 页面挂载时插入提供可验证的宿主机制参考。
+3. 提供严格的 Objective-C 方法签名校验和仅对目标类安装 Hook 的实现思路。
+4. 提供网易云 9.6.09 的现代类名参考，避免继续以 2017/2018 年 4.x 项目推断当前宿主结构。
+
+### 版本边界
+
+NaiWa 二进制中出现了 `NMRCTPageViewController` 等新宿主类，但目前尚未证明其目标宿主版本就是 9.6.09（7516）。下一步需从 NaiWa 的 `hostVersion` / `appVersion` 字符串引用点、版本门控及当前用户实际网易云安装版本确认目标版本。
