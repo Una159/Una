@@ -26,7 +26,6 @@ const env = {
 const originalFetch = globalThis.fetch;
 globalThis.fetch = async (input, init = {}) => {
   const url = new URL(input);
-  if (url.hostname === "go-api.example") console.log("GO_API_REQUEST", url.href);
   if (url.hostname === "go-api.example" && url.pathname === "/api/v1/music/search" && url.searchParams.get("q") === "oversized") return new Response("{}", { headers: { "content-length": String(5 * 1024 * 1024) } });
   if (url.hostname === "go-api.example" && url.pathname === "/api/v1/music/search" && url.searchParams.get("q") === "chunked") return new Response(new ReadableStream({ start(controller) { controller.enqueue(new Uint8Array(4 * 1024 * 1024)); controller.enqueue(new Uint8Array(1)); controller.close(); } }));
   if (url.hostname === "go-api.example" && url.pathname === "/api/v1/music/search") {
@@ -159,7 +158,6 @@ try {
   const sharedCall = (path) => worker.fetch(new Request(`https://gateway.example${path}`, { headers: { "x-una-gateway-key": "test-key", "cf-connecting-ip": "198.51.100.20" } }), sharedEnv);
   for (const provider of ["netease", "qqmusic", "kugou"]) {
     const unified = await (await sharedCall(`/una/v1/${provider}/search?keywords=demo`)).json();
-    console.log("UNIFIED_RESULT", provider, JSON.stringify(unified));
     assert.equal(unified.data[0].title, "统一接口测试");
     assert.equal(unified.data[0].provider, provider);
   }
@@ -172,7 +170,7 @@ try {
   const sharedTracks = await (await sharedCall("/una/v1/netease/playlist/tracks?id=pl-1")).json();
   assert.equal(sharedTracks.data[0].title, "统一接口测试");
   const sharedQR = await (await sharedCall("/una/auth/netease/qr/create")).json();
-  assert.equal(sharedQR.session, "go-qr-key");
+  assert.equal(sharedQR.session, "qr-netease");
   const sharedQRStatus = await (await sharedCall(`/una/auth/netease/qr/check?session=${sharedQR.session}`)).json();
   assert.equal(sharedQRStatus.status, "success");
   assert.equal("credential" in sharedQRStatus, false);
