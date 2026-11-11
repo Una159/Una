@@ -50,6 +50,17 @@ try {
   const wrongMethod = await worker.fetch(new Request("https://gateway.example/una/v1/netease/search?keywords=test", { method: "POST", headers: { "x-una-gateway-key": "test-key" } }), env);
   assert.equal(wrongMethod.status, 405);
 
+  const oversizedURL = await worker.fetch(new Request(`https://gateway.example/health?${"x".repeat(4100)}`, { headers: { "x-una-gateway-key": "test-key" } }), env);
+  assert.equal(oversizedURL.status, 414);
+  const oversizedQRBody = await worker.fetch(new Request("https://gateway.example/una/auth/qqmusic/qr/check?session=test", {
+    method: "POST", headers: { "x-una-gateway-key": "test-key", "content-type": "application/json" }, body: JSON.stringify({ payload: "x".repeat(17 * 1024) })
+  }), env);
+  assert.equal(oversizedQRBody.status, 413);
+  const invalidQRBody = await worker.fetch(new Request("https://gateway.example/una/auth/qqmusic/qr/check?session=test", {
+    method: "POST", headers: { "x-una-gateway-key": "test-key", "content-type": "application/json" }, body: "[]"
+  }), env);
+  assert.equal(invalidQRBody.status, 400);
+
   const missingSecretEnv = { ...env, GATEWAY_API_KEY: undefined };
   const missingSecret = await worker.fetch(new Request("https://gateway.example/una/v1/netease/search?keywords=test", { headers: { "x-una-gateway-key": "test-key" } }), missingSecretEnv);
   assert.equal(missingSecret.status, 401);
