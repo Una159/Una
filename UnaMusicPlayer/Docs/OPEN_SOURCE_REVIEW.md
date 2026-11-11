@@ -13,7 +13,7 @@ Status: preparation only. This change does not make the repository public or ann
 
 ### Confirmed
 
-- iOS Simulator build and Una Quality Gate passed on the current branch HEAD `0d9b0a9914b9d74f6d92f4aa6f5ddeaaf334e44e` (runs [42988003598](https://github.com/Una159/Una/actions/runs/42988003598) and [42988003560](https://github.com/Una159/Una/actions/runs/42988003560)); the Quality Gate's simulator build and gateway checks both passed.
+- iOS Simulator build and Una Quality Gate passed on branch HEAD `2d49dba4efc78666f0fd5fc62e9835aa2ebc10ab` (runs [43014304671](https://github.com/Una159/Una/actions/runs/43014304671) and [43014304684](https://github.com/Una159/Una/actions/runs/43014304684)); the Quality Gate's simulator build and gateway checks both passed.
 - Cloudflare Gateway type-check and mocked smoke tests passed at commits `4eb9dcaa49582d6cc76dafaf46cf2394df5c8892` (run [42987951673](https://github.com/Una159/Una/actions/runs/42987951673)); the current HEAD Quality Gate also passed its gateway checks.
 - The Worker is a gateway and depends on separately deployed provider adapters.
 - The Worker is not deployed to an owner-controlled production account.
@@ -33,7 +33,7 @@ Status: preparation only. This change does not make the repository public or ann
 ## Public-release checklist
 
 - [ ] Owner accepts review and approves public visibility.
-- [x] Re-run iOS Simulator build and Una Quality Gate on current HEAD `0d9b0a9914b9d74f6d92f4aa6f5ddeaaf334e44e` (runs [42988003598](https://github.com/Una159/Una/actions/runs/42988003598), [42988003560](https://github.com/Una159/Una/actions/runs/42988003560)).
+- [x] Re-run iOS Simulator build and Una Quality Gate on current verified HEAD `2d49dba4efc78666f0fd5fc62e9835aa2ebc10ab` (runs [43014304671](https://github.com/Una159/Una/actions/runs/43014304671), [43014304684](https://github.com/Una159/Una/actions/runs/43014304684)).
 - [x] Final app icon PNG and AppIcon.appiconset Contents.json are committed; [ ] verify asset-catalog compilation in Xcode.
 - [ ] Physical-device QA is documented.
 - [ ] Real provider login and playback are verified.
