@@ -1,29 +1,69 @@
-# Una — 原生 iOS 本地音乐播放器
+# Una
 
-Una 是使用 SwiftUI + AVFoundation 构建的原生 iOS 音乐播放器工程，采用深色液态玻璃视觉方向。
+**An independent native music player for iOS.**
 
-## 当前实现
-- 本地音频文件导入（系统文件选择器，多选）
-- MP3 / M4A / WAV / AIFF 等系统支持的音频格式
-- 本地音乐库持久化（Documents/UnaMusic）
-- 搜索歌曲、艺术家与专辑
-- 播放 / 暂停、上一首 / 下一首、进度拖动
-- 随机播放、循环模式
-- 后台音频播放配置、锁屏和耳机远程控制基础接入
-- 液态玻璃材质、动态渐变封面占位视觉
+Una is a SwiftUI and AVFoundation music player designed around a local-first library, a focused listening experience and optional music-source integrations. The project is being prepared for an MIT-licensed public release; it is **not yet announced as production-ready**.
 
-## 打开工程
-1. 使用 macOS 上的 Xcode 打开 `Una.xcodeproj`。
-2. 在 Signing & Capabilities 中选择你的 Apple Developer Team，必要时修改 Bundle Identifier（默认 `com.una.music`）。
-3. 连接 iPhone 或选择 iOS Simulator，运行。
-4. 真机测试后台播放、文件导入、锁屏控制与不同音频格式。
+## Project principles
 
-## 环境
-- GitHub Actions 使用 macOS runner 与 Xcode 编译 iOS Simulator 目标
-- 建议 Xcode 15 或更新版本
-- iOS Deployment Target：17.0
-- Swift 5
+- **Local-first:** the core player should remain useful without connecting to an online music provider.
+- **Native iOS:** use system audio and media APIs where appropriate.
+- **Modular sources:** optional provider integrations must not make the local library dependent on third-party services.
+- **Privacy by default:** never commit or log account cookies, QR sessions, API keys or personal library data.
+- **Respect access rights:** playback is limited to media the user is authorized to access. Una does not bypass DRM, paid access, geographic restrictions or provider controls.
 
-## 当前版本边界
-这是可继续开发的原生工程起点，不应在未完成真机 QA 前直接提交 App Store。当前封面为程序生成的视觉占位；歌词同步、真正的均衡器、歌单编辑、专辑元数据封面、无障碍细节、崩溃与音频格式兼容性测试仍需补齐。
-本应用不提供未经授权的在线音乐源，也不绕过 DRM。受 DRM 保护的 Apple Music 资源通常无法作为普通本地文件复制播放。
+## Current app capabilities
+
+- Import local audio through the system file picker.
+- Store and browse a local music library.
+- Search local tracks, artists and albums.
+- Play, pause, seek, skip, shuffle and repeat.
+- Basic background audio and remote-control integration.
+- Dark visual design.
+
+## Optional online music integration
+
+The optional Cloudflare Gateway defines normalized routes for NetEase, Kugou, Qishui and QQ Music. It is a gateway scaffold, not a guarantee that upstream provider services are deployed or that real-account flows currently work.
+
+See [Cloudflare Gateway documentation](CloudflareGateway/README.md) and [integration status](Docs/INTEGRATION_STATUS.md). Mocked CI tests are not live provider verification.
+
+## Build the iOS app
+
+Requirements: macOS with Xcode, an iOS 17-compatible toolchain and Swift 5 language mode.
+
+1. Open `Una.xcodeproj`.
+2. Select the `Una` scheme and an iOS Simulator or connected iPhone.
+3. Configure your own signing team and bundle identifier if needed.
+4. Build and run.
+
+GitHub Actions workflows validate the simulator build and gateway. See [integration status](Docs/INTEGRATION_STATUS.md).
+
+## Run Gateway checks
+
+```sh
+cd CloudflareGateway
+npm install
+npm test
+```
+
+Deployment requires your own Cloudflare account, Worker secrets, provider adapter origins and KV configuration. Never put production secrets in source control.
+
+## Repository layout
+
+- `Una/` — native iOS application.
+- `CloudflareGateway/` — optional Cloudflare Worker API gateway.
+- `Docs/` — architecture, integration and release-readiness notes.
+
+## License
+
+Una is intended to be distributed under the MIT License. See [LICENSE](LICENSE).
+
+Third-party provider adapters, APIs, media, trademarks and artwork may have separate licenses and terms. The MIT license for Una does not grant rights to third-party content or services.
+
+## Contributing and security
+
+See [CONTRIBUTING.md](CONTRIBUTING.md), [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md) and [SECURITY.md](SECURITY.md).
+
+## Status
+
+This is an active development project. Features present in source code may still require real-device or real-provider validation. Check integration status before relying on a capability.
