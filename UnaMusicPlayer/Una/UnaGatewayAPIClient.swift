@@ -69,13 +69,28 @@ final class UnaGatewayAPIClient: @unchecked Sendable {
     private let apiKey: String
     private let session: URLSession
 
-    init(baseURL: String, apiKey: String, session: URLSession = .shared) throws {
-        guard let url = URL(string: baseURL), url.scheme == "https", url.host != nil else {
+    init(baseURL: String, apiKey: String, session: URLSession? = nil) throws {
+        guard let url = URL(string: baseURL),
+              url.scheme?.lowercased() == "https",
+              let host = url.host, !host.isEmpty,
+              url.user == nil, url.password == nil,
+              url.query == nil, url.fragment == nil else {
             throw UnaGatewayError.invalidBaseURL
         }
         self.baseURL = url
         self.apiKey = apiKey
-        self.session = session
+        if let session {
+            self.session = session
+        } else {
+            let configuration = URLSessionConfiguration.ephemeral
+            configuration.httpCookieStorage = nil
+            configuration.urlCache = nil
+            configuration.requestCachePolicy = .reloadIgnoringLocalCacheData
+            configuration.timeoutIntervalForRequest = 20
+            configuration.timeoutIntervalForResource = 45
+            configuration.httpMaximumConnectionsPerHost = 6
+            self.session = URLSession(configuration: configuration)
+        }
     }
 
     func search(provider: UnaMusicProvider, keywords: String, limit: Int = 20, cookie: String? = nil) async throws -> [UnaGatewayTrack] {
@@ -88,7 +103,11 @@ final class UnaGatewayAPIClient: @unchecked Sendable {
         let object = try await get(providerPath(provider, "song/url"), query: [URLQueryItem(name: "id", value: id)], cookie: cookie)
         let envelope = try JSONSerialization.jsonObject(with: object) as? [String: Any]
         let data = envelope?["data"] as? [String: Any]
-        guard let raw = data?["url"] as? String, let url = URL(string: raw), ["https", "http"].contains(url.scheme?.lowercased() ?? "") else {
+        guard let raw = data?["url"] as? String,
+              let url = URL(string: raw),
+              url.scheme?.lowercased() == "https",
+              url.host != nil,
+              url.user == nil, url.password == nil else {
             throw UnaGatewayError.missingPlaybackURL
         }
         return url
@@ -139,11 +158,14 @@ final class UnaGatewayAPIClient: @unchecked Sendable {
         guard let url = components?.url else { throw UnaGatewayError.invalidBaseURL }
         var request = URLRequest(url: url)
         request.httpMethod = "GET"
+        request.cachePolicy = .reloadIgnoringLocalCacheData
+        request.timeoutInterval = 20
         request.setValue("application/json", forHTTPHeaderField: "Accept")
         request.setValue(apiKey, forHTTPHeaderField: "X-Una-Gateway-Key")
         if let cookie, !cookie.isEmpty { request.setValue(cookie, forHTTPHeaderField: "Cookie") }
         let (data, response) = try await session.data(for: request)
         guard let http = response as? HTTPURLResponse else { throw UnaGatewayError.invalidResponse }
+        guard data.count <= 15 * 1024 * 1024 else { throw UnaGatewayError.apiError("网关响应过大，已停止解析") }
         guard (200..<300).contains(http.statusCode) else {
             let message = (try? JSONSerialization.jsonObject(with: data) as? [String: Any])?["message"] as? String ?? "未知错误"
             throw UnaGatewayError.httpStatus(http.statusCode, message)
