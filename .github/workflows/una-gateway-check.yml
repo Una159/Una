@@ -1,0 +1,35 @@
+name: Una Gateway Validation
+
+on:
+  push:
+    branches:
+      - feature/una-ios-xcode
+    paths:
+      - "UnaMusicPlayer/CloudflareGateway/**"
+      - ".github/workflows/una-gateway-check.yml"
+  pull_request:
+    paths:
+      - "UnaMusicPlayer/CloudflareGateway/**"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: UnaMusicPlayer/CloudflareGateway
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: UnaMusicPlayer/CloudflareGateway/package.json
+      - name: Install dependencies
+        run: npm install --ignore-scripts --no-audit --no-fund
+      - name: Type check and smoke tests
+        run: npm test
