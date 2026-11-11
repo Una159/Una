@@ -49,6 +49,11 @@ try {
 
   assert.equal((await call("/not-found")).status, 404);
 
+  assert.equal((await call("/una/v1/netease/search?keywords=")).status, 400);
+  assert.equal((await call("/una/v1/netease/search?keywords=" + "x".repeat(121))).status, 400);
+  assert.equal((await call("/una/v1/netease/song/url?id=")).status, 400);
+  assert.equal((await call("/una/v1/netease/search?keywords=test&limit=0")).status, 400);
+
   const neteaseQR = await (await call("/una/auth/netease/qr/create")).json();
   assert.equal(neteaseQR.session, "ne-key");
   assert.ok(neteaseQR.qrImage);
