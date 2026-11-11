@@ -12,7 +12,7 @@ export interface Env {
 
 type Provider = "netease" | "kugou" | "qishui" | "qqmusic";
 type RouteKind = "search" | "song-url" | "lyric" | "playlist" | "playlist-tracks" | "qr-create" | "qr-check";
-const PROVIDERS: Provider[] = ["netease", "kugou", "qishui", "qqmusic"];
+const PROVIDERS: Provider[] = ["netease", "kugou", "qishui", "qqmusic"];\nconst GO_SOURCE: Record<Provider, string> = { netease: "netease", kugou: "kugou", qishui: "soda", qqmusic: "qq" };
 const JSON_HEADERS = { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" };
 
 function json(data: unknown, status = 200, extra: HeadersInit = {}) {
@@ -149,7 +149,28 @@ function qrRoute(provider: Provider, kind: "qr-create" | "qr-check", q: URLSearc
   if (kind === "qr-create") return { path: `/login/qrcode`, method: "POST" as const, body: {} };
   return { path: `/login/checkQrcode`, method: "POST" as const, body: { ...(body ?? {}), token: q.get("session") ?? body?.token ?? "" } };
 }
-const UPSTREAM_TIMEOUT_MS = 15_000;
+
+function goMusicTarget(provider: Provider, kind: RouteKind, q: URLSearchParams, body: any): { path: string; method: string; body?: unknown } {
+  const source = GO_SOURCE[provider];
+  const p = new URLSearchParams();
+  const copy = ["id", "name", "artist", "album", "cover", "duration", "extra", "page", "limit", "uid", "uin"];
+  for (const key of copy) { const value = q.get(key); if (value !== null && value !== "") p.set(key, value); }
+  p.set("source", source);
+  if (kind === "search") {
+    p.set("q", q.get("keywords") ?? q.get("q") ?? "");
+    p.set("type", "song");
+    p.delete("id"); p.delete("name"); p.delete("artist"); p.delete("album"); p.delete("cover"); p.delete("duration"); p.delete("extra");
+    return { path: `/api/v1/music/search?${p.toString()}`, method: "GET" };
+  }
+  if (kind === "song-url") return { path: `/api/v1/music/url?${p.toString()}`, method: "GET" };
+  if (kind === "lyric") return { path: `/api/v1/music/lyric?${p.toString()}`, method: "GET" };
+  if (kind === "playlist") return { path: `/api/v1/playlist/user?${p.toString()}`, method: "GET" };
+  if (kind === "playlist-tracks") return { path: `/api/v1/playlist/detail?${p.toString()}`, method: "GET" };
+  if (kind === "qr-create") return { path: `/api/v1/system/qr_login/${source}`, method: "POST", body: {} };
+  if (kind === "qr-check") return { path: `/api/v1/system/qr_login/${source}?${new URLSearchParams({ key: q.get("session") ?? "" }).toString()}`, method: "GET" };
+  return { path: "/health", method: "GET" };
+}
+\nconst UPSTREAM_TIMEOUT_MS = 15_000;
 const MAX_UPSTREAM_RESPONSE_BYTES = 4 * 1024 * 1024;
 
 async function enforceRateLimit(
@@ -339,7 +360,7 @@ export default {
         const uin = first(self?.data, ["uin", "musicid", "id"]) ?? first(self, ["uin", "musicid"]);
         if (uin) target.path = `/user/songlist?uin=${encodeURIComponent(String(uin))}&page=1&num=${encodeURIComponent(url.searchParams.get("limit") ?? "30")}`;
       }
-      const upstream = await callUpstream(origin, target.path, target.method, request, target.body);
+      const upstreamRequest = new Request(request, { headers: new Headers(request.headers) });\n      if (env.GO_MUSIC_API_TOKEN) upstreamRequest.headers.set("authorization", `Bearer ${env.GO_MUSIC_API_TOKEN}`);\n      const upstream = await callUpstream(origin, target.path, target.method, upstreamRequest, target.body);
       if (!upstream.ok) return json({ code: upstream.status, message: "upstream_error", provider }, upstream.status, cors);
       if (legacyNeteaseQRMatch) {
         const headers = new Headers({ ...cors, "content-type": upstream.headers.get("content-type") ?? "application/json", "cache-control": "no-store" });
@@ -360,7 +381,7 @@ export default {
           if (lyricResponse.ok) parsed = await lyricResponse.json().catch(() => parsed);
         }
       }
-      if (authMatch && provider === "netease" && authMatch[2] === "check") {
+      if (env.GO_MUSIC_API_ORIGIN && authMatch) {\n        const data = parsed?.data ?? parsed;\n        const credential = first(data, ["cookie", "credential", "token", "tokenstr"]);\n        const statusCode = Number(parsed?.code ?? data?.code ?? 0);\n        if (authMatch[2] === "create") {\n          const session = String(first(data, ["key", "unikey", "token", "session"]) ?? "");\n          const qrUrl = first(data, ["url", "qrurl", "qrcode_url", "qr_url"]);\n          const qrImage = first(data, ["qrimg", "qrcode", "qrImage", "image"]);\n          return json({ session, qrUrl, qrImage, status: "waiting", raw: data }, 200, cors);\n        }\n        if (credential || statusCode === 200 && (data?.status === "success" || data?.status === "done")) return json({ status: "success", credential: credential ?? null }, 200, cors);\n        return json({ status: data?.status === "scanned" ? "scanned" : data?.status === "expired" ? "expired" : "waiting", raw: data }, 200, cors);\n      }\n      if (authMatch && provider === "netease" && authMatch[2] === "check") {
         const code = Number(parsed?.code ?? parsed?.data?.code ?? 0);
         const credential = cookieHeaderFromSetCookie(upstream.headers.get("set-cookie")) ?? first(parsed?.data, ["cookie", "credential"]);
         if (code === 803 || credential) return json({ status: "success", credential: credential ?? null }, 200, cors);
