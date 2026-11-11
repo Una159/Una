@@ -556,17 +556,25 @@ struct GatewayMusicView: View {
     }
 
     @MainActor
-    private func cancelQRLogin() {
+    private func stopQRPolling() {
         qrPollingTask?.cancel()
         qrPollingTask = nil
+    }
+
+    @MainActor
+    private func cancelQRLogin() {
+        stopQRPolling()
         qrSession = nil
         if cookie == nil { qrStatus = "已取消扫码" }
     }
 
     @MainActor
     private func startQRLogin() async {
-        cancelQRLogin()
-        isLoading = true; errorMessage = nil
+        stopQRPolling()
+        qrSession = nil
+        qrStatus = "正在创建二维码"
+        isLoading = true
+        errorMessage = nil
         defer { isLoading = false }
         do {
             let session = try await makeClient().createQRLogin(provider: provider)
@@ -618,7 +626,10 @@ struct GatewayMusicView: View {
                 if qrSession?.session == session.session { qrStatus = "二维码轮询超时，请重新生成" }
                 qrPollingTask = nil
             }
-        } catch { errorMessage = error.localizedDescription }
+        } catch {
+            qrStatus = "二维码创建失败"
+            errorMessage = error.localizedDescription
+        }
     }
 }
 
