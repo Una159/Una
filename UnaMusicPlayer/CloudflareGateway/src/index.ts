@@ -351,20 +351,20 @@ export default {
         const kind = ({ search: "search", "song/url": "song-url", lyric: "lyric", playlist: "playlist", "playlist/tracks": "playlist-tracks" } as Record<string, RouteKind>)[apiMatch![2]];
         target = upstreamPath(provider, kind, url.searchParams);
       }
-      if (authMatch && provider === "qqmusic" && authMatch[2] === "check") {
+      if (!env.GO_MUSIC_API_ORIGIN && authMatch && provider === "qqmusic" && authMatch[2] === "check") {
         const session = url.searchParams.get("session") ?? "";
         if (!env.QR_SESSIONS) return json({ code: 503, message: "qr_session_store_not_configured" }, 503, cors);
         const saved = await env.QR_SESSIONS.get(`qq:${session}`, "json") as any;
         if (!saved) return json({ status: "expired", message: "二维码已过期，请重新生成" }, 200, cors);
         target.body = { ...(saved ?? {}), ...(target.body as object ?? {}) };
       }
-      if (!authMatch && apiMatch?.[2] === "playlist" && provider === "netease" && !url.searchParams.get("uid")) {
+      if (!env.GO_MUSIC_API_ORIGIN && !authMatch && apiMatch?.[2] === "playlist" && provider === "netease" && !url.searchParams.get("uid")) {
         const accountResponse = await callUpstream(origin, "/user/account", "GET", request);
         const account: any = await accountResponse.json().catch(() => ({}));
         const uid = first(account?.profile, ["userId", "user_id"]) ?? first(account?.account, ["id", "userId"]);
         if (uid) target.path = `/user/playlist?uid=${encodeURIComponent(String(uid))}&limit=${encodeURIComponent(url.searchParams.get("limit") ?? "30")}`;
       }
-      if (!authMatch && apiMatch?.[2] === "playlist" && provider === "qqmusic" && !url.searchParams.get("uin")) {
+      if (!env.GO_MUSIC_API_ORIGIN && !authMatch && apiMatch?.[2] === "playlist" && provider === "qqmusic" && !url.searchParams.get("uin")) {
         const selfResponse = await callUpstream(origin, "/user/self", "GET", request);
         const self: any = await selfResponse.json().catch(() => ({}));
         const uin = first(self?.data, ["uin", "musicid", "id"]) ?? first(self, ["uin", "musicid"]);
