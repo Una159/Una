@@ -14,7 +14,7 @@ export interface Env {
 
 type Provider = "netease" | "kugou" | "qishui" | "qqmusic";
 type RouteKind = "search" | "song-url" | "lyric" | "playlist" | "playlist-tracks" | "qr-create" | "qr-check";
-const PROVIDERS: Provider[] = ["netease", "kugou", "qishui", "qqmusic"];
+const PROVIDERS: Provider[] = ["netease", "kugou", "qqmusic"];
 const GO_SOURCE: Record<Provider, string> = { netease: "netease", kugou: "kugou", qishui: "soda", qqmusic: "qq" };
 const JSON_HEADERS = { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" };
 
@@ -397,7 +397,7 @@ export default {
           const qrImage = first(data, ["qrimg", "qrcode", "qrImage", "image"]);
           return json({ session, qrUrl, qrImage, status: "waiting", raw: data }, 200, cors);
         }
-        if (credential || statusCode === 200 && (data?.status === "success" || data?.status === "done")) return json({ status: "success", credential: credential ?? null }, 200, cors);
+        if (credential || statusCode === 200 && (data?.status === "success" || data?.status === "done")) return json({ status: "success" }, 200, cors);
         return json({ status: data?.status === "scanned" ? "scanned" : data?.status === "expired" ? "expired" : "waiting", raw: data }, 200, cors);
       }
       if (authMatch && provider === "netease" && authMatch[2] === "check") {
