@@ -174,6 +174,7 @@ try {
     const sharedQR = await (await sharedCall(`/una/auth/${provider}/qr/create`)).json();
     assert.equal(sharedQR.session, `qr-${source}`);
     const sharedQRStatus = await (await sharedCall(`/una/auth/${provider}/qr/check?session=${sharedQR.session}`)).json();
+    console.log("QR_STATUS", provider, JSON.stringify(sharedQRStatus));
     assert.equal(sharedQRStatus.status, "success");
     assert.equal("credential" in sharedQRStatus, false);
   }
