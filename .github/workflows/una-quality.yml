@@ -1,0 +1,61 @@
+name: Una Quality Gate
+
+on:
+  push:
+    branches:
+      - feature/una-ios-xcode
+    paths:
+      - "UnaMusicPlayer/**"
+      - ".github/workflows/una-quality.yml"
+  pull_request:
+    branches:
+      - feature/una-ios-xcode
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  gateway:
+    name: Cloudflare Gateway checks
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: UnaMusicPlayer/CloudflareGateway
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: UnaMusicPlayer/CloudflareGateway/package-lock.json
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
+      - name: Type-check and smoke-test
+        run: npm test
+
+  ios:
+    name: Build Una for iOS Simulator
+    runs-on: macos-15
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - name: Select Xcode
+        run: xcodebuild -version
+      - name: Validate project metadata
+        run: |
+          set -euo pipefail
+          plutil -lint UnaMusicPlayer/Una/Info.plist
+          python3 -m json.tool UnaMusicPlayer/Una/Assets.xcassets/Contents.json >/dev/null
+          python3 -m json.tool UnaMusicPlayer/Una/Assets.xcassets/AppIcon.appiconset/Contents.json >/dev/null
+      - name: Build simulator app
+        run: |
+          set -o pipefail
+          xcodebuild \
+            -project UnaMusicPlayer/Una.xcodeproj \
+            -scheme Una \
+            -configuration Release \
+            -destination 'generic/platform=iOS Simulator' \
+            -derivedDataPath "$RUNNER_TEMP/UnaDerivedData" \
+            CODE_SIGNING_ALLOWED=NO \
+            build | tee "$RUNNER_TEMP/una-build.log"
