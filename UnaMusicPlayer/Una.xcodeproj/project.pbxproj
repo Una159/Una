@@ -5,7 +5,7 @@
  objectVersion = 56;
  objects = {
   A00000000000000000000001 = {isa = PBXProject; attributes = {LastUpgradeCheck = 1600; TargetAttributes = {A00000000000000000000002 = {CreatedOnToolsVersion = 15.0;};};}; buildConfigurationList = A00000000000000000000010; compatibilityVersion = "Xcode 14.0"; developmentRegion = en; hasScannedForEncodings = 0; knownRegions = (en, Base, zh-Hans); mainGroup = A00000000000000000000003; productRefGroup = A00000000000000000000004; projectDirPath = ""; projectRoot = ""; targets = (A00000000000000000000002,);};
-  A00000000000000000000002 = {isa = PBXNativeTarget; buildConfigurationList = A00000000000000000000000011; buildPhases = (A00000000000000000000020,A00000000000000000000021,A00000000000000000000022,); buildRules = (); dependencies = (); name = Una; productName = Una; productReference = A00000000000000000000005; productType = "com.apple.product-type.application";};
+  A00000000000000000000002 = {isa = PBXNativeTarget; buildConfigurationList = A00000000000000000000011; buildPhases = (A00000000000000000000020,A00000000000000000000021,A00000000000000000000022,); buildRules = (); dependencies = (); name = Una; productName = Una; productReference = A00000000000000000000005; productType = "com.apple.product-type.application";};
   A00000000000000000000003 = {isa = PBXGroup; children = (A00000000000000000000006,A00000000000000000000007,A00000000000000000000004,); sourceTree = "<group>";};
   A00000000000000000000004 = {isa = PBXGroup; children = (A00000000000000000000005,); name = Products; sourceTree = "GROUP";};
   A00000000000000000000005 = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Una.app; sourceTree = BUILT_PRODUCTS_DIR;};
