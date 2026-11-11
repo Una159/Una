@@ -1,4 +1,6 @@
-export interface Env {\n  GO_MUSIC_API_ORIGIN?: string;\n  GO_MUSIC_API_TOKEN?: string;
+export interface Env {
+  GO_MUSIC_API_ORIGIN?: string;
+  GO_MUSIC_API_TOKEN?: string;
   NETEASE_ORIGIN?: string;
   KUGOU_ORIGIN?: string;
   QISHUI_ORIGIN?: string;
