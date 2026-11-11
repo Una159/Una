@@ -64,6 +64,7 @@ private final class UnaRemoteAudioController: ObservableObject {
 
     @Published private(set) var currentTrackID: String?
     @Published private(set) var isPlaying = false
+    @Published private(set) var playbackError: String?
 
     private var player: AVPlayer?
     private var timeObserver: Any?
@@ -71,6 +72,8 @@ private final class UnaRemoteAudioController: ObservableObject {
     private var interruptionObserver: NSObjectProtocol?
     private var routeObserver: NSObjectProtocol?
     private var playbackObservation: NSKeyValueObservation?
+    private var itemStatusObservation: NSKeyValueObservation?
+    private var failedPlaybackObserver: NSObjectProtocol?
     private var resumeAfterInterruption = false
 
     private init() {
@@ -92,9 +95,31 @@ private final class UnaRemoteAudioController: ObservableObject {
 
         let item = AVPlayerItem(url: url)
         let nextPlayer = AVPlayer(playerItem: item)
+        playbackError = nil
         nextPlayer.allowsExternalPlayback = true
         player = nextPlayer
         currentTrackID = track.playbackKey
+
+        itemStatusObservation = item.observe(\.status, options: [.initial, .new]) { [weak self] observedItem, _ in
+            guard observedItem.status == .failed else { return }
+            let message = observedItem.error?.localizedDescription ?? "音频资源加载失败"
+            Task { @MainActor in
+                self?.playbackError = message
+                self?.pause()
+            }
+        }
+
+        failedPlaybackObserver = NotificationCenter.default.addObserver(
+            forName: .AVPlayerItemFailedToPlayToEndTime,
+            object: item,
+            queue: .main
+        ) { [weak self] notification in
+            let error = notification.userInfo?[AVPlayerItemFailedToPlayToEndTimeErrorKey] as? Error
+            Task { @MainActor in
+                self?.playbackError = error?.localizedDescription ?? "播放中断：音频无法继续播放"
+                self?.pause()
+            }
+        }
 
         playbackObservation = nextPlayer.observe(\.timeControlStatus, options: [.initial, .new]) { [weak self] observedPlayer, _ in
             Task { @MainActor in
@@ -158,6 +183,11 @@ private final class UnaRemoteAudioController: ObservableObject {
             NotificationCenter.default.removeObserver(endObserver)
         }
         endObserver = nil
+        if let failedPlaybackObserver {
+            NotificationCenter.default.removeObserver(failedPlaybackObserver)
+        }
+        failedPlaybackObserver = nil
+        itemStatusObservation = nil
         playbackObservation = nil
     }
 
@@ -285,6 +315,11 @@ struct GatewayMusicView: View {
                 }
                 if let errorMessage {
                     Text(errorMessage).font(.system(size: 12)).foregroundStyle(.orange)
+                        .padding(12).frame(maxWidth: .infinity, alignment: .leading)
+                        .background(.orange.opacity(0.08), in: RoundedRectangle(cornerRadius: 12))
+                }
+                if let playbackError = audioController.playbackError {
+                    Text("播放错误：\(playbackError)").font(.system(size: 12)).foregroundStyle(.orange)
                         .padding(12).frame(maxWidth: .infinity, alignment: .leading)
                         .background(.orange.opacity(0.08), in: RoundedRectangle(cornerRadius: 12))
                 }
