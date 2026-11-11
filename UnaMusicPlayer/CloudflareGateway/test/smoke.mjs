@@ -14,6 +14,13 @@ const env = {
     async put(key, value) { sessions.set(key, value); },
     async delete(key) { sessions.delete(key); }
   }
+,
+  API_RATE_LIMITER: {
+    async limit({ key }) { return { success: !key.endsWith(":198.51.100.8") }; }
+  },
+  QR_RATE_LIMITER: {
+    async limit({ key }) { return { success: !key.endsWith(":198.51.100.8") }; }
+  }
 };
 
 const originalFetch = globalThis.fetch;
@@ -36,7 +43,7 @@ globalThis.fetch = async (input) => {
   return Response.json({ data: [] });
 };
 
-const call = (path, headers = { "x-una-gateway-key": "test-key" }) =>
+const call = (path, headers = { "x-una-gateway-key": "test-key", "cf-connecting-ip": "198.51.100.20" }) =>
   worker.fetch(new Request(`https://gateway.example${path}`, { headers }), env);
 
 try {
@@ -70,6 +77,24 @@ try {
   assert.equal(health.data.providers.length, 4);
 
   assert.equal((await call("/not-found")).status, 404);
+
+  const blockedQR = await call("/una/auth/netease/qr/create", {
+    "x-una-gateway-key": "test-key",
+    "cf-connecting-ip": "198.51.100.8"
+  });
+  assert.equal(blockedQR.status, 429);
+  assert.equal(blockedQR.headers.get("retry-after"), "60");
+  const blockedAPI = await call("/una/v1/netease/search?keywords=demo", {
+    "x-una-gateway-key": "test-key",
+    "cf-connecting-ip": "198.51.100.8"
+  });
+  assert.equal(blockedAPI.status, 429);
+
+  const missingLimiterEnv = { ...env, API_RATE_LIMITER: undefined };
+  const missingLimiter = await worker.fetch(new Request("https://gateway.example/una/v1/netease/search?keywords=demo", {
+    headers: { "x-una-gateway-key": "test-key", "cf-connecting-ip": "198.51.100.20" }
+  }), missingLimiterEnv);
+  assert.equal(missingLimiter.status, 503);
 
   assert.equal((await call("/una/v1/netease/search?keywords=")).status, 400);
   assert.equal((await call("/una/v1/netease/search?keywords=" + "x".repeat(121))).status, 400);
