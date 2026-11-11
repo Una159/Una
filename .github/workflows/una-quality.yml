@@ -24,13 +24,15 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
+          cache: npm
+          cache-dependency-path: UnaMusicPlayer/CloudflareGateway/package-lock.json
       - name: Type-check and smoke-test when gateway is present
         shell: bash
         run: |
           set -euo pipefail
           if [ -f UnaMusicPlayer/CloudflareGateway/package.json ]; then
             cd UnaMusicPlayer/CloudflareGateway
-            npm install --no-audit --no-fund
+            npm ci --ignore-scripts --no-audit --no-fund
             npm test
           else
             echo "::notice::Cloudflare Gateway source is not yet integrated in this branch."
