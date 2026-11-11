@@ -7,6 +7,7 @@ const env = {
   KUGOU_ORIGIN: "https://kugou.example",
   QISHUI_ORIGIN: "https://qishui.example",
   QQMUSIC_ORIGIN: "https://qqmusic.example",
+  ALLOWED_ORIGIN: "https://app.una.example",
   GATEWAY_API_KEY: "test-key",
   QR_SESSIONS: {
     async get(key) { return sessions.has(key) ? JSON.parse(sessions.get(key)) : null; },
@@ -27,6 +28,7 @@ globalThis.fetch = async (input) => {
   if (url.pathname === "/auth/qrcode/status") return Response.json({ data: { status: "success", auth: { sessionid: "soda-cookie" } } });
   if (url.pathname === "/login/qrcode") return Response.json({ data: { qrsig: "qq-sig", ptqrtoken: "123", qrcode: "aGVsbG8=" } });
   if (url.pathname === "/login/checkQrcode") return Response.json({ data: { status: "DONE", credential: "qq-cookie" } });
+  if (url.pathname === "/song/urls" && url.hostname === "qqmusic.example") return Response.json({ data: { tracks: [{ media: { playUrl: "https://media.example/qq.mp3" } }] } });
   if (url.pathname === "/search/general" && url.hostname === "qqmusic.example") return Response.json({ data: { body: { song: { list: [{ songmid: "qq-mid", songname: "QQ 测试歌曲", singer: [{ name: "QQ 测试歌手" }], albumname: "测试专辑" }] } } } });
   if (url.pathname === "/search") return Response.json({ data: [{ id: "s1", name: "测试曲目", singer: "测试歌手", url: "https://media.example/audio.mp3" }] });
   if (url.pathname === "/lyric") return Response.json({ data: { lyric: "[00:01.00]测试歌词" } });
@@ -39,6 +41,13 @@ const call = (path, headers = { "x-una-gateway-key": "test-key" }) =>
 try {
   const unauthorized = await worker.fetch(new Request("https://gateway.example/health"), env);
   assert.equal(unauthorized.status, 401);
+  const allowedOrigin = await worker.fetch(new Request("https://gateway.example/health", { headers: { "x-una-gateway-key": "test-key", origin: "https://app.una.example" } }), env);
+  assert.equal(allowedOrigin.status, 200);
+  assert.equal(allowedOrigin.headers.get("access-control-allow-origin"), "https://app.una.example");
+  const blockedOrigin = await worker.fetch(new Request("https://gateway.example/health", { headers: { "x-una-gateway-key": "test-key", origin: "https://evil.example" } }), env);
+  assert.equal(blockedOrigin.status, 403);
+  const wrongMethod = await worker.fetch(new Request("https://gateway.example/una/v1/netease/search?keywords=test", { method: "POST", headers: { "x-una-gateway-key": "test-key" } }), env);
+  assert.equal(wrongMethod.status, 405);
 
   const missingSecretEnv = { ...env, GATEWAY_API_KEY: undefined };
   const missingSecret = await worker.fetch(new Request("https://gateway.example/una/v1/netease/search?keywords=test", { headers: { "x-una-gateway-key": "test-key" } }), missingSecretEnv);
@@ -60,7 +69,7 @@ try {
   assert.ok(neteaseQR.qrImage);
   const neteaseStatus = await (await call(`/una/auth/netease/qr/check?session=${neteaseQR.session}`)).json();
   assert.equal(neteaseStatus.status, "success");
-  assert.equal(neteaseStatus.credential, "MUSIC_U=netease-cookie; Path=/");
+  assert.equal(neteaseStatus.credential, "MUSIC_U=netease-cookie");
 
   const kugouQR = await (await call("/una/auth/kugou/qr/create")).json();
   assert.equal(kugouQR.session, "kg-key");
@@ -85,6 +94,8 @@ try {
   assert.equal(qqSearch.data[0].id, "qq-mid");
   assert.equal(qqSearch.data[0].title, "QQ 测试歌曲");
   assert.equal(qqSearch.data[0].artist, "QQ 测试歌手");
+  const qqSongURL = await (await call("/una/v1/qqmusic/song/url?id=qq-mid")).json();
+  assert.equal(qqSongURL.data.url, "https://media.example/qq.mp3");
   const lyric = await (await call("/una/v1/qishui/lyric?id=s1")).json();
   assert.equal(lyric.data.lyric, "[00:01.00]测试歌词");
 
