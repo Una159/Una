@@ -94,7 +94,7 @@ private final class UnaRemoteAudioController: ObservableObject {
         let nextPlayer = AVPlayer(playerItem: item)
         nextPlayer.allowsExternalPlayback = true
         player = nextPlayer
-        currentTrackID = track.id
+        currentTrackID = track.playbackKey
 
         playbackObservation = nextPlayer.observe(\.timeControlStatus, options: [.initial, .new]) { [weak self] observedPlayer, _ in
             Task { @MainActor in
@@ -419,9 +419,9 @@ struct GatewayMusicView: View {
                         Image(systemName: "text.quote").foregroundStyle(.white.opacity(0.7))
                     }.accessibilityLabel("查看歌词")
                     Button { Task { await play(track) } } label: {
-                        Image(systemName: audioController.currentTrackID == track.id && audioController.isPlaying ? "pause.fill" : "play.fill")
+                        Image(systemName: audioController.currentTrackID == track.playbackKey && audioController.isPlaying ? "pause.fill" : "play.fill")
                             .foregroundStyle(mint).frame(width: 34, height: 34)
-                    }.accessibilityLabel(audioController.currentTrackID == track.id && audioController.isPlaying ? "暂停" : "播放")
+                    }.accessibilityLabel(audioController.currentTrackID == track.playbackKey && audioController.isPlaying ? "暂停" : "播放")
                 }
                 .padding(.vertical, 7)
                 Divider().overlay(.white.opacity(0.06))
@@ -508,7 +508,7 @@ struct GatewayMusicView: View {
 
     @MainActor
     private func play(_ track: UnaGatewayTrack) async {
-        if audioController.currentTrackID == track.id {
+        if audioController.currentTrackID == track.playbackKey {
             audioController.isPlaying ? audioController.pause() : audioController.resume()
             return
         }
