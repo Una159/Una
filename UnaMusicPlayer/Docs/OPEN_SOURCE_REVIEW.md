@@ -23,7 +23,7 @@ Status: preparation only. This change does not make the repository public or ann
 
 ### Release blockers
 
-1. The current Git tree has an AppIcon asset catalog manifest but no referenced binary AppIcon image. Add and verify the owner-approved final icon before release.
+1. The owner has selected the final Una icon (1024×1024 source image). The source was converted locally to PNG, but the binary has not yet been committed into the AppIcon asset catalog; add it and verify it in Xcode before release.
 2. Validate background playback, lock screen, AirPlay, interruptions and file import on physical iPhones.
 3. Verify real QR login, logout, search, pagination, playlists, lyrics and authorized playback for each provider.
 4. Review upstream adapter repositories, versions and licenses before bundling or deploying them. Keep notices and attribution.
