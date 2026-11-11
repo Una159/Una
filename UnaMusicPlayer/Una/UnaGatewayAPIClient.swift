@@ -79,7 +79,7 @@ final class UnaGatewayAPIClient: @unchecked Sendable {
     }
 
     func search(provider: UnaMusicProvider, keywords: String, limit: Int = 20, cookie: String? = nil) async throws -> [UnaGatewayTrack] {
-        var query = [URLQueryItem(name: "keywords", value: keywords), URLQueryItem(name: "limit", value: String(limit))]
+        let query = [URLQueryItem(name: "keywords", value: keywords), URLQueryItem(name: "limit", value: String(limit))]
         let object = try await get(providerPath(provider, "search"), query: query, cookie: cookie)
         return try decodeData([UnaGatewayTrack].self, from: object)
     }
