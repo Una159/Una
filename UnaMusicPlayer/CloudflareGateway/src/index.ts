@@ -148,6 +148,16 @@ export default {
           const data = createJSON?.data ?? createJSON;
           return json({ session: String(key), qrUrl: first(data, ["url", "qrurl", "qrcode_url"]), qrImage: first(data, ["qrimg", "qrcode", "qrImage"]), status: "waiting" }, createResponse.status, cors);
         }
+        if (provider === "netease" && authMatch[2] === "create") {
+          const keyResponse = await callUpstream(origin, `/login/qr/key?timestamp=${Date.now()}`, "GET", request);
+          const keyJSON: any = await keyResponse.json().catch(() => ({}));
+          const key = first(keyJSON?.data, ["unikey", "key"]) ?? first(keyJSON, ["unikey", "key"]);
+          if (!key) return json({ code: 502, message: "netease_qr_key_missing" }, 502, cors);
+          const createResponse = await callUpstream(origin, `/login/qr/create?key=${encodeURIComponent(String(key))}&qrimg=true&timestamp=${Date.now()}`, "GET", request);
+          const createJSON: any = await createResponse.json().catch(() => ({}));
+          const data = createJSON?.data ?? createJSON;
+          return json({ session: String(key), qrUrl: first(data, ["qrurl", "url", "qrUrl"]), qrImage: first(data, ["qrimg", "qrImage", "image"]), status: "waiting" }, createResponse.status, cors);
+        }
         target = qrRoute(provider, authMatch[2] === "create" ? "qr-create" : "qr-check", url.searchParams, body);
       } else {
         const kind = ({ search: "search", "song/url": "song-url", lyric: "lyric", playlist: "playlist", "playlist/tracks": "playlist-tracks" } as Record<string, RouteKind>)[apiMatch![2]];
@@ -192,6 +202,19 @@ export default {
           const lyricResponse = await callUpstream(origin, `/lyric?id=${encodeURIComponent(String(lyricID))}&accesskey=${encodeURIComponent(String(accessKey))}&decode=true`, "GET", request);
           if (lyricResponse.ok) parsed = await lyricResponse.json().catch(() => parsed);
         }
+      }
+      if (authMatch && provider === "netease" && authMatch[2] === "check") {
+        const code = Number(parsed?.code ?? parsed?.data?.code ?? 0);
+        const credential = upstream.headers.get("set-cookie") ?? first(parsed?.data, ["cookie", "credential"]);
+        if (code === 803 || credential) return json({ status: "success", credential: credential ?? null }, 200, cors);
+        return json({ status: code === 801 ? "scanned" : code === 802 ? "expired" : "waiting", message: first(parsed, ["message", "msg"]) ?? null }, 200, cors);
+      }
+      if (authMatch && provider === "kugou" && authMatch[2] === "check") {
+        const data = parsed?.data ?? parsed;
+        const credential = first(data, ["cookie", "credential", "token", "tokenstr", "authToken"]);
+        const code = Number(parsed?.code ?? parsed?.status ?? 0);
+        if (credential) return json({ status: "success", credential }, 200, cors);
+        return json({ status: code === 2 ? "scanned" : code === 3 ? "expired" : "waiting", message: first(data, ["message", "msg"]) ?? null }, 200, cors);
       }
       if (authMatch) {
         if (provider === "qishui" && authMatch[2] === "create") {
