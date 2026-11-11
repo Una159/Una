@@ -7,6 +7,7 @@ struct ContentView: View {
     @State private var selectedTab = 0
     @State private var showPlayer = false
     @State private var showImporter = false
+    @Namespace private var tabSelectionNamespace
 
     private let ink = Color(red: 0.91, green: 0.96, blue: 0.94)
     private let mint = Color(red: 0.64, green: 0.94, blue: 0.80)
@@ -209,61 +210,85 @@ struct ContentView: View {
     }
 
     private var tabBar: some View {
-        HStack(spacing: 4) {
+        HStack(spacing: 5) {
             tab("music.note.list", title: "音乐", index: 0)
             tab("square.stack", title: "歌单", index: 1)
             tab("globe", title: "在线", index: 2)
             tab("slider.horizontal.3", title: "设置", index: 3)
         }
-        .padding(.horizontal, 9)
-        .padding(.vertical, 11)
+        .padding(7)
         .background {
             Capsule()
                 .fill(.ultraThinMaterial)
+                .environment(\.colorScheme, .dark)
                 .overlay {
-                    Capsule()
-                        .fill(
-                            LinearGradient(
-                                colors: [.white.opacity(0.17), .white.opacity(0.035), .white.opacity(0.075)],
-                                startPoint: .topLeading,
-                                endPoint: .bottomTrailing
-                            )
+                    Capsule().fill(
+                        LinearGradient(
+                            stops: [
+                                .init(color: .white.opacity(0.25), location: 0),
+                                .init(color: .white.opacity(0.07), location: 0.28),
+                                .init(color: Color(red: 0.16, green: 0.23, blue: 0.25).opacity(0.30), location: 0.72),
+                                .init(color: .white.opacity(0.10), location: 1)
+                            ],
+                            startPoint: .topLeading, endPoint: .bottomTrailing
                         )
+                    )
                 }
                 .overlay {
                     Capsule().strokeBorder(
                         LinearGradient(
-                            colors: [.white.opacity(0.42), .white.opacity(0.12), .white.opacity(0.20)],
-                            startPoint: .topLeading,
-                            endPoint: .bottomTrailing
-                        ),
-                        lineWidth: 1
+                            colors: [.white.opacity(0.48), .white.opacity(0.13), .white.opacity(0.24)],
+                            startPoint: .topLeading, endPoint: .bottomTrailing
+                        ), lineWidth: 1
                     )
                 }
-                .shadow(color: .black.opacity(0.38), radius: 22, x: 0, y: 11)
-                .shadow(color: mint.opacity(0.10), radius: 14, x: 0, y: 0)
+                .overlay(alignment: .top) {
+                    Capsule().fill(.white.opacity(0.48))
+                        .frame(height: 1).padding(.horizontal, 30).padding(.top, 1)
+                        .blur(radius: 0.3)
+                }
+                .shadow(color: .black.opacity(0.42), radius: 26, x: 0, y: 13)
+                .shadow(color: mint.opacity(0.13), radius: 18, x: 0, y: 1)
         }
-        .overlay(alignment: .top) {
-            Capsule()
-                .fill(.white.opacity(0.30))
-                .frame(height: 1)
-                .padding(.horizontal, 34)
-                .padding(.top, 1)
-        }
-        .padding(.horizontal, 24)
-        .padding(.top, 7)
-        .padding(.bottom, 9)
+        .padding(.horizontal, 25)
+        .padding(.top, 8)
+        .padding(.bottom, 10)
     }
 
     private func tab(_ icon: String, title: String, index: Int) -> some View {
-        Button { withAnimation(.spring(response: 0.35, dampingFraction: 0.82)) { selectedTab = index } } label: {
-            VStack(spacing: 5) {
-                Image(systemName: icon).font(.system(size: 19, weight: .medium))
-                Text(title).font(.system(size: 10, weight: .medium))
+        Button {
+            withAnimation(.spring(response: 0.38, dampingFraction: 0.78)) { selectedTab = index }
+        } label: {
+            VStack(spacing: 4) {
+                Image(systemName: icon)
+                    .font(.system(size: selectedTab == index ? 18 : 17, weight: selectedTab == index ? .semibold : .medium))
+                    .symbolEffect(.bounce, value: selectedTab == index)
+                Text(title).font(.system(size: 10, weight: selectedTab == index ? .semibold : .medium))
             }
-            .foregroundStyle(selectedTab == index ? mint : .white.opacity(0.38))
+            .foregroundStyle(selectedTab == index ? Color(red: 0.76, green: 1.0, blue: 0.91) : .white.opacity(0.58))
             .frame(maxWidth: .infinity)
+            .frame(height: 48)
+            .background {
+                if selectedTab == index {
+                    Capsule()
+                        .fill(.ultraThinMaterial)
+                        .overlay {
+                            Capsule().fill(
+                                LinearGradient(
+                                    colors: [.white.opacity(0.25), mint.opacity(0.13), .white.opacity(0.035)],
+                                    startPoint: .topLeading, endPoint: .bottomTrailing
+                                )
+                            )
+                        }
+                        .overlay { Capsule().strokeBorder(.white.opacity(0.22), lineWidth: 0.8) }
+                        .shadow(color: mint.opacity(0.12), radius: 10, x: 0, y: 2)
+                        .matchedGeometryEffect(id: "una.tab.selection", in: tabSelectionNamespace)
+                }
+            }
+            .contentShape(Capsule())
         }
+        .buttonStyle(.plain)
+        .accessibilityAddTraits(selectedTab == index ? .isSelected : [])
     }
 }
 
