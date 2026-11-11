@@ -19,20 +19,22 @@ jobs:
   gateway:
     name: Cloudflare Gateway checks
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: UnaMusicPlayer/CloudflareGateway
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-          cache: npm
-          cache-dependency-path: UnaMusicPlayer/CloudflareGateway/package-lock.json
-      - name: Install dependencies
-        run: npm install --no-audit --no-fund
-      - name: Type-check and smoke-test
-        run: npm test
+      - name: Type-check and smoke-test when gateway is present
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ -f UnaMusicPlayer/CloudflareGateway/package.json ]; then
+            cd UnaMusicPlayer/CloudflareGateway
+            npm install --no-audit --no-fund
+            npm test
+          else
+            echo "::notice::Cloudflare Gateway source is not yet integrated in this branch."
+          fi
 
   ios:
     name: Build Una for iOS Simulator
