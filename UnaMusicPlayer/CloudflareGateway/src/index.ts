@@ -6,6 +6,8 @@ export interface Env {
   ALLOWED_ORIGIN?: string;
   GATEWAY_API_KEY?: string;
   QR_SESSIONS?: KVNamespace;
+  API_RATE_LIMITER?: RateLimitBinding;
+  QR_RATE_LIMITER?: RateLimitBinding;
 }
 
 type Provider = "netease" | "kugou" | "qishui" | "qqmusic";
@@ -150,6 +152,32 @@ function qrRoute(provider: Provider, kind: "qr-create" | "qr-check", q: URLSearc
 const UPSTREAM_TIMEOUT_MS = 15_000;
 const MAX_UPSTREAM_RESPONSE_BYTES = 4 * 1024 * 1024;
 
+async function enforceRateLimit(
+  env: Env,
+  request: Request,
+  route: string,
+  isQR: boolean,
+  cors: HeadersInit
+): Promise<Response | undefined> {
+  const limiter = isQR ? env.QR_RATE_LIMITER : env.API_RATE_LIMITER;
+  // Fail closed: protected routes must never silently run without their configured limiter.
+  if (!limiter) return json({ code: 503, message: "rate_limiter_not_configured" }, 503, cors);
+  const clientIP = request.headers.get("cf-connecting-ip")?.trim() || "unknown";
+  try {
+    const result = await limiter.limit({ key: `una:${isQR ? "qr" : "api"}:${route}:${clientIP}` });
+    if (!result.success) {
+      return json({ code: 429, message: "rate_limit_exceeded" }, 429, {
+        ...Object.fromEntries(new Headers(cors).entries()),
+        "retry-after": "60"
+      });
+    }
+    return undefined;
+  } catch {
+    // A broken/missing platform binding must not become an accidental unlimited proxy.
+    return json({ code: 503, message: "rate_limiter_unavailable" }, 503, cors);
+  }
+}
+
 async function callUpstream(origin: string, path: string, method: string, incoming: Request, body?: unknown) {
   const url = new URL(path, origin);
   const headers = new Headers({ accept: "application/json" });
@@ -221,6 +249,8 @@ export default {
     const provider = (authMatch?.[1] ?? (legacyNeteaseQRMatch ? "netease" : apiMatch?.[1])) as Provider;
     const origin = providerOrigin(env, provider);
     if (!origin) return json({ code: 503, message: `${provider}_adapter_not_configured` }, 503, cors);
+    const rateLimitResponse = await enforceRateLimit(env, request, url.pathname, !!(authMatch || legacyNeteaseQRMatch), cors);
+    if (rateLimitResponse) return rateLimitResponse;
 
     try {
       let target: { path: string; method: string; body?: unknown };
