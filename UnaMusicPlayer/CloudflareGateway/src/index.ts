@@ -297,6 +297,7 @@ export default {
       url.searchParams.set("limit", String(Math.min(Math.floor(limit), 50)));
     }
     const provider = (authMatch?.[1] ?? (legacyNeteaseQRMatch ? "netease" : apiMatch?.[1])) as Provider;
+    if (provider === "qishui") return json({ code: 501, message: "provider_temporarily_disabled", provider: "qishui" }, 501, cors);
     const origin = providerOrigin(env, provider);
     if (!origin) return json({ code: 503, message: `${provider}_adapter_not_configured` }, 503, cors);
     const rateLimitResponse = await enforceRateLimit(env, request, url.pathname, !!(authMatch || legacyNeteaseQRMatch), cors);
@@ -304,7 +305,10 @@ export default {
 
     try {
       let target: { path: string; method: string; body?: unknown };
-      if (legacyNeteaseQRMatch) {
+      if (env.GO_MUSIC_API_ORIGIN && !legacyNeteaseQRMatch) {
+        const goKind = authMatch ? (authMatch[2] === "create" ? "qr-create" : "qr-check") : ({ search: "search", "song/url": "song-url", lyric: "lyric", playlist: "playlist", "playlist/tracks": "playlist-tracks" } as Record<string, RouteKind>)[apiMatch![2]];
+        target = goMusicTarget(provider, goKind, url.searchParams, {});
+      } else if (legacyNeteaseQRMatch) {
         target = { path: url.pathname + url.search, method: "GET" };
       } else if (authMatch) {
         let body: any = {};
