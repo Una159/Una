@@ -62,5 +62,4 @@ jobs:
             -destination 'generic/platform=iOS Simulator' \
             -derivedDataPath "$RUNNER_TEMP/UnaDerivedData" \
             CODE_SIGNING_ALLOWED=NO \
-            INFOPLIST_FILE="$GITHUB_WORKSPACE/UnaMusicPlayer/Una/Info.plist" \
             build | tee "$RUNNER_TEMP/una-build.log"
