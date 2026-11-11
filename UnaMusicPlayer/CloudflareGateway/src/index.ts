@@ -121,7 +121,7 @@ export default {
     const corsOrigin = env.ALLOWED_ORIGIN ?? "null";
     const cors = { "access-control-allow-origin": corsOrigin, "access-control-allow-methods": "GET,POST,OPTIONS", "access-control-allow-headers": "content-type,authorization,cookie,x-una-gateway-key", "vary": "origin" };
     if (request.method === "OPTIONS") return new Response(null, { status: 204, headers: cors });
-    if (env.GATEWAY_API_KEY && request.headers.get("x-una-gateway-key") !== env.GATEWAY_API_KEY) return json({ code: 401, message: "unauthorized" }, 401, cors);
+    // Fail closed: never expose provider adapters when the gateway secret is missing or mismatched.\n    if (!env.GATEWAY_API_KEY || request.headers.get("x-una-gateway-key") !== env.GATEWAY_API_KEY) return json({ code: 401, message: "unauthorized" }, 401, cors);
     if (url.pathname === "/health") return json({ code: 0, message: "ok", data: { service: "una-music-gateway", providers: PROVIDERS.map(p => ({ id: p, configured: !!providerOrigin(env, p) })) } }, 200, cors);
 
     const authMatch = url.pathname.match(/^\/una\/auth\/(netease|kugou|qishui|qqmusic)\/qr\/(create|check)$/);
