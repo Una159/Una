@@ -1,0 +1,40 @@
+name: NaiWa Theos Build
+
+on:
+  push:
+    branches:
+      - naiwa-reconstruction
+    paths:
+      - "NaiWa/**"
+      - ".github/workflows/naiwa-build.yml"
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: macos-14
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install build dependencies
+        run: |
+          brew update
+          brew install ldid make dpkg
+
+      - name: Install Theos
+        run: |
+          git clone --recursive https://github.com/theos/theos.git "$HOME/theos"
+          git clone --depth=1 https://github.com/theos/sdks.git "$HOME/theos/sdks"
+
+      - name: Build rootless package
+        working-directory: NaiWa
+        run: |
+          export THEOS="$HOME/theos"
+          make package
+
+      - name: Upload packages
+        uses: actions/upload-artifact@v4
+        with:
+          name: NaiWa-rootless-deb
+          path: NaiWa/packages/*.deb
+          if-no-files-found: error
