@@ -13,8 +13,7 @@ Status: preparation only. This change does not make the repository public or ann
 
 ### Confirmed
 
-- iOS Simulator build passed in GitHub Actions at commit `adafb604498902d5ba020a61e95f41d90ade7745` (run [42964857879](https://github.com/Una159/Una/actions/runs/42964857879)); project validation, simulator build and artifact upload succeeded.
-- Una Quality Gate passed at the same commit (run [42964857754](https://github.com/Una159/Una/actions/runs/42964857754)).
+- iOS Simulator build, Una Quality Gate, and Gateway Validation all passed at commit `27d82c966b1cfce702599a76fd06fb5e22668d63` (runs [42965644529](https://github.com/Una159/Una/actions/runs/42965644529), [42965644544](https://github.com/Una159/Una/actions/runs/42965644544), [42965644524](https://github.com/Una159/Una/actions/runs/42965644524)).
 - Earlier Cloudflare Gateway type-check and mocked smoke tests passed at commit `e7b0010`.
 - The Worker is a gateway and depends on separately deployed provider adapters.
 - The Worker is not deployed to an owner-controlled production account.
