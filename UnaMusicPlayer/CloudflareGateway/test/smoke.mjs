@@ -39,6 +39,10 @@ try {
   const unauthorized = await worker.fetch(new Request("https://gateway.example/health"), env);
   assert.equal(unauthorized.status, 401);
 
+  const missingSecretEnv = { ...env, GATEWAY_API_KEY: undefined };
+  const missingSecret = await worker.fetch(new Request("https://gateway.example/una/v1/netease/search?keywords=test", { headers: { "x-una-gateway-key": "test-key" } }), missingSecretEnv);
+  assert.equal(missingSecret.status, 401);
+
   const health = await (await call("/health")).json();
   assert.equal(health.code, 0);
   assert.equal(health.data.providers.length, 4);
