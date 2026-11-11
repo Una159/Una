@@ -347,16 +347,19 @@ struct GatewayMusicView: View {
         VStack(alignment: .leading, spacing: 10) {
             Label("Una 音乐网关", systemImage: "point.3.connected.trianglepath.dotted")
                 .font(.system(size: 15, weight: .semibold)).foregroundStyle(ink)
-            TextField("https://your-worker.workers.dev", text: $gatewayBaseURL)
+            TextField("Cloudflare Worker HTTPS 地址", text: $gatewayBaseURL)
                 .textInputAutocapitalization(.never).autocorrectionDisabled()
                 .keyboardType(.URL).font(.system(size: 13))
                 .padding(13).background(.black.opacity(0.22), in: RoundedRectangle(cornerRadius: 12))
+            Text("填写已部署的 Worker 地址（https://…workers.dev），不能使用示例地址。")
+                .font(.system(size: 10)).foregroundStyle(.white.opacity(0.48))
             SecureField("Gateway API Key", text: $gatewayKeyDraft)
                 .textInputAutocapitalization(.never).autocorrectionDisabled()
                 .font(.system(size: 13)).padding(13)
                 .background(.black.opacity(0.22), in: RoundedRectangle(cornerRadius: 12))
             Button {
                 do {
+                    _ = try UnaGatewayAPIClient(baseURL: gatewayBaseURL, apiKey: gatewayKeyDraft)
                     try UnaCredentialVault.save(gatewayKeyDraft, account: "gateway-api-key")
                     errorMessage = nil
                 } catch {
@@ -627,7 +630,7 @@ struct GatewayMusicView: View {
                 qrPollingTask = nil
             }
         } catch {
-            qrStatus = "二维码创建失败"
+            qrStatus = "二维码创建失败：\(error.localizedDescription)"
             errorMessage = error.localizedDescription
         }
     }
