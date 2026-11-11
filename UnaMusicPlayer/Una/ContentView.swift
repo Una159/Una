@@ -20,6 +20,7 @@ struct ContentView: View {
                     switch selectedTab {
                     case 0: libraryView
                     case 1: playlistsView
+                    case 2: GatewayMusicView()
                     default: settingsView
                     }
                 }
@@ -54,7 +55,7 @@ struct ContentView: View {
         HStack(alignment: .center) {
             VStack(alignment: .leading, spacing: 3) {
                 Text("UNA").font(.system(size: 13, weight: .bold, design: .rounded)).tracking(5).foregroundStyle(mint)
-                Text(selectedTab == 0 ? "你的音乐" : selectedTab == 1 ? "播放空间" : "设置")
+                Text(selectedTab == 0 ? "你的音乐" : selectedTab == 1 ? "播放空间" : selectedTab == 2 ? "在线音乐" : "设置")
                     .font(.system(size: 31, weight: .semibold, design: .rounded)).foregroundStyle(ink)
             }
             Spacer()
@@ -211,7 +212,8 @@ struct ContentView: View {
         HStack {
             tab("music.note.list", title: "音乐", index: 0)
             tab("square.stack", title: "歌单", index: 1)
-            tab("slider.horizontal.3", title: "设置", index: 2)
+            tab("globe", title: "在线", index: 2)
+            tab("slider.horizontal.3", title: "设置", index: 3)
         }
         .padding(.top, 12).padding(.bottom, 8)
         .background(.ultraThinMaterial)
