@@ -83,7 +83,7 @@ try {
 
   const health = await (await call("/health")).json();
   assert.equal(health.code, 0);
-  assert.equal(health.data.providers.length, 4);
+  assert.equal(health.data.providers.length, 3);
 
   assert.equal((await call("/not-found")).status, 404);
 
@@ -146,7 +146,7 @@ try {
   assert.equal(qqSearch.data[0].artist, "QQ 测试歌手");
   const qqSongURL = await (await call("/una/v1/qqmusic/song/url?id=qq-mid")).json();
   assert.equal(qqSongURL.data.url, "https://media.example/qq.mp3");
-  const lyric = await (await call("/una/v1/qishui/lyric?id=s1")).json();
+  const lyric = await (await call("/una/v1/netease/lyric?id=s1")).json();
   assert.equal(lyric.data.lyric, "[00:01.00]测试歌词");
 
   console.log("Una gateway smoke tests passed");
