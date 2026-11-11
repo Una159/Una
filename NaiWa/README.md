@@ -1,22 +1,18 @@
 # NaiWa reconstruction
 
-This directory is an isolated Theos/rootless build target on the `naiwa-reconstruction` branch.
+Isolated Theos/rootless build target on the naiwa-reconstruction branch.
 
 ## Current status
+- Build scaffold and CI workflow: committed.
+- Preference access, runtime hook helper, feature-key registry: committed.
+- Standalone dock UI/state foundation: committed.
+- Original host-app hook integration: not yet verified.
+- Full feature parity and device validation: not yet complete.
 
-- Build scaffold: added.
-- Original binary analysis: separate from this source tree.
-- Runtime hooks and feature implementations: not yet reconstructed.
-- Device validation: not yet performed.
-
-The current entry point intentionally performs no host-app modification. This scaffold is not a functional replacement for the original `NaiWa.dylib`.
+The supplied original NaiWa.dylib remains separate from this source tree. This reconstruction intentionally does not install guessed host-app hooks. The standalone dock view is an implementation foundation, not proof that the original dock has been fully reproduced.
 
 ## Build
-
-From this directory in a Theos environment:
-
-```sh
+From this directory in a configured Theos environment:
 make package
-```
 
-The target is configured for arm64/arm64e, rootless packaging, and iOS 15+.
+Configured for arm64/arm64e, rootless packaging, and iOS 15+.
