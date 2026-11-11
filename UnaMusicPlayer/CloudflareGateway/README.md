@@ -23,6 +23,46 @@ The Worker is a gateway, not a provider implementation. Each provider origin mus
 6. Deploy with `npx wrangler deploy`.
 7. Check `/health`. This reports configured origins only; it does not prove provider login works.
 
+
+## Cloudflare Dashboard Git integration
+
+The Worker source is **not at the repository root**. For the connected Git repository, configure the Worker build settings as follows:
+
+| Setting | Value |
+|---|---|
+| Repository | `Una159/Una` |
+| Production branch for this project | `feature/una-ios-xcode` (keep deployment manual until live-provider checks pass) |
+| Root directory | `UnaMusicPlayer/CloudflareGateway` |
+| Build command | `npm ci && npm test` |
+| Deploy command | `npx wrangler deploy` |
+| Worker name | `una-music-gateway` (from `wrangler.toml`) |
+
+Do not use repository root `/` as the Worker root: that directory does not contain this gateway's `package.json` or `wrangler.toml`. If the Cloudflare dashboard does not expose a separate deploy command for this connection, use the dashboard's Workers Builds configuration for the same root directory and verify that it invokes Wrangler from this folder.
+
+Before enabling automatic production deployments, switch the production branch only after the gateway has passed live provider tests. Until then, use a manual deployment from the Cloudflare dashboard or run Wrangler from this directory after the account configuration is complete.
+
+## Local configuration (no production credentials in Git)
+
+```sh
+cd UnaMusicPlayer/CloudflareGateway
+npm ci
+cp .dev.vars.example .dev.vars
+```
+
+Edit `.dev.vars` with a long random `GATEWAY_API_KEY`, the exact HTTPS origins of your four adapter services, and the app's allowed origin. Keep `.dev.vars` local; it is ignored by Git. Start local development with `npm run dev`. The local Worker still needs the KV and rate-limit bindings configured in Wrangler for QR and protected API routes to work end-to-end.
+
+For Cloudflare, set `GATEWAY_API_KEY` with `npx wrangler secret put GATEWAY_API_KEY` (never put it in `wrangler.toml`, GitHub source, or a public build variable). Set the four provider origins and `ALLOWED_ORIGIN` as Worker environment variables in the Cloudflare dashboard or Wrangler configuration. Create the KV namespace and replace the commented placeholder binding in `wrangler.toml` with the real namespace ID before deploying QR login. Confirm the two Rate Limiting namespace IDs are available in this Cloudflare account; change them if they conflict.
+
+### Required values before a usable deployment
+
+- Four real HTTPS adapter origins: NetEase, Kugou, Qishui and QQ Music.
+- One strong gateway API key, stored as a Worker secret and in Una's local settings.
+- A real Cloudflare KV namespace ID for `QR_SESSIONS`.
+- The actual app origin(s) for `ALLOWED_ORIGIN`; do not use a wildcard for credentialed requests.
+- Two available Cloudflare Rate Limiting namespace IDs.
+
+Do not substitute example domains or sample secrets. A deployment without these values may publish the Worker code, but provider routes will correctly return configuration errors and QR login will remain unavailable.
+
 ## Unified routes
 
 - `GET /una/auth/{provider}/qr/create`
