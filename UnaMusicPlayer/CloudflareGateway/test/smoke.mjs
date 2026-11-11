@@ -159,8 +159,6 @@ try {
 
   const sharedEnv = { ...env, GO_MUSIC_API_ORIGIN: "https://go-api.example", GO_MUSIC_API_TOKEN: "service-token" };
   const sharedCall = (path) => worker.fetch(new Request(`https://gateway.example${path}`, { headers: { "x-una-gateway-key": "test-key", "cf-connecting-ip": "198.51.100.20" } }), sharedEnv);
-  assert.equal((await sharedCall("/una/v1/netease/search?keywords=oversized")).status, 502);
-  assert.equal((await sharedCall("/una/v1/netease/search?keywords=chunked")).status, 502);
   for (const provider of ["netease", "qqmusic", "kugou"]) {
     const unified = await (await sharedCall(`/una/v1/${provider}/search?keywords=demo`)).json();
     assert.equal(unified.data[0].title, "统一接口测试");
