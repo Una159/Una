@@ -37,10 +37,16 @@ function rowsFrom(payload: any): any[] {
   return candidates.find(Array.isArray) ?? [];
 }
 function normalizeTrack(row: any, provider: Provider) {
+  const rawArtist = first(row, ["artist", "singer", "artistName", "author", "singername"]);
+  const artist = Array.isArray(rawArtist)
+    ? rawArtist.map(item => typeof item === "string" ? item : first(item, ["name", "title", "nick"]) ?? "").filter(Boolean).join(" / ")
+    : typeof rawArtist === "object" && rawArtist !== null
+      ? String(first(rawArtist, ["name", "title", "nick"]) ?? "未知歌手")
+      : String(rawArtist ?? "未知歌手");
   return {
     id: String(first(row, ["id", "songId", "songid", "mid", "songmid", "hash", "track_id", "trackId"]) ?? ""),
     title: String(first(row, ["title", "name", "songName", "songname"]) ?? "未知歌曲"),
-    artist: String(first(row, ["artist", "singer", "artistName", "author", "singername"]) ?? "未知歌手"),
+    artist,
     album: first(row, ["album", "albumName", "albumname"]) ?? null,
     duration: Number(first(row, ["duration", "interval", "dt"]) ?? 0) || null,
     artworkURL: first(row, ["artworkURL", "artwork", "picUrl", "cover", "coverUrl", "albummid"]) ?? null,
