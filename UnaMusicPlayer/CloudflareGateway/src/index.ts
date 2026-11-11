@@ -136,6 +136,19 @@ export default {
     const legacyNeteaseQRMatch = url.pathname.match(/^\/login\/qr\/(key|create|check)$/);
     const apiMatch = url.pathname.match(/^\/una\/v1\/(netease|kugou|qishui|qqmusic)\/(search|song\/url|lyric|playlist|playlist\/tracks)$/);
     if (!authMatch && !legacyNeteaseQRMatch && !apiMatch) return json({ code: 404, message: "route_not_found" }, 404, cors);
+    if (apiMatch) {
+      const keywords = url.searchParams.get("keywords") ?? "";
+      const id = url.searchParams.get("id") ?? "";
+      const limit = Number(url.searchParams.get("limit") ?? "20");
+      if (apiMatch[2] === "search" && (!keywords.trim() || keywords.length > 120)) {
+        return json({ code: 400, message: "invalid_search_keywords" }, 400, cors);
+      }
+      if (["song/url", "lyric", "playlist/tracks"].includes(apiMatch[2]) && (!id || id.length > 160)) {
+        return json({ code: 400, message: "invalid_resource_id" }, 400, cors);
+      }
+      if (!Number.isFinite(limit) || limit < 1) return json({ code: 400, message: "invalid_limit" }, 400, cors);
+      url.searchParams.set("limit", String(Math.min(Math.floor(limit), 50)));
+    }
     const provider = (authMatch?.[1] ?? (legacyNeteaseQRMatch ? "netease" : apiMatch?.[1])) as Provider;
     const origin = providerOrigin(env, provider);
     if (!origin) return json({ code: 503, message: `${provider}_adapter_not_configured` }, 503, cors);
