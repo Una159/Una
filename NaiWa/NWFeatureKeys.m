@@ -1,0 +1,31 @@
+#import "NWFeatureKeys.h"
+
+NSString * const NWKeyNativeEnabled = @"com.naiwa.native.enabled";
+NSString * const NWKeySettingsGlass = @"com.naiwa.appearance.settingsGlass";
+NSString * const NWKeyTabsGlass = @"com.naiwa.glass.tabs";
+NSString * const NWKeyPlayerGlass = @"com.naiwa.glass.player";
+NSString * const NWKeyCommentsGlass = @"com.naiwa.comments.glass";
+NSString * const NWKeyMessagesGlass = @"com.naiwa.messages.glass";
+NSString * const NWKeyPopupGlass = @"com.naiwa.appearance.popupGlass";
+NSString * const NWKeySidebarGlass = @"com.naiwa.appearance.sidebarGlass";
+NSString * const NWKeyDockTabDisplayMode = @"com.naiwa.dock.tabDisplayMode";
+NSString * const NWKeySearchNative = @"com.naiwa.search.native";
+NSString * const NWKeySearchHideAI = @"com.naiwa.search.hideAI";
+NSString * const NWKeyTextFont = @"com.naiwa.text.font";
+NSString * const NWKeyTextColor = @"com.naiwa.text.color";
+NSString * const NWKeyFrameMeter = @"com.naiwa.performance.frameMeter";
+NSString * const NWKeyHighRefresh = @"com.naiwa.performance.highRefresh";
+NSString * const NWKeyWallpaperEnergySaving = @"com.naiwa.wallpaper.energySaving";
+NSString * const NWKeySkipSplash = @"com.naiwa.privacy.skipSplash";
+NSString * const NWKeyHideAds = @"com.naiwa.privacy.hideAds";
+NSString * const NWKeySidebarBlur = @"com.naiwa.sidebar.blur";
+NSString * const NWKeySidebarOpacity = @"com.naiwa.sidebar.opacity";
+NSString * const NWKeyWallpaperPath = @"com.naiwa.wallpaper.path";
+NSString * const NWKeyWallpaperKind = @"com.naiwa.wallpaper.kind";
+NSString * const NWKeyWallpaperSuspended = @"com.naiwa.wallpaper.suspended";
+NSString * const NWKeySearchHideShortcuts = @"com.naiwa.search.hideShortcuts";
+NSString * const NWKeySearchHideSuggestions = @"com.naiwa.search.hideSuggestions";
+NSString * const NWKeySearchHideHistory = @"com.naiwa.search.hideHistory";
+NSString * const NWKeySearchHideCharts = @"com.naiwa.search.hideCharts";
+NSString * const NWKeyControlsHidden = @"com.naiwa.controls.hidden";
+NSString * const NWKeyControlsPositions = @"com.naiwa.controls.positions";
