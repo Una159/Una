@@ -195,8 +195,31 @@ async function callUpstream(origin: string, path: string, method: string, incomi
       await response.body?.cancel();
       throw new Error("upstream_response_too_large");
     }
-    const bytes = await response.arrayBuffer();
-    if (bytes.byteLength > MAX_UPSTREAM_RESPONSE_BYTES) throw new Error("upstream_response_too_large");
+    const reader = response.body?.getReader();
+    const chunks: Uint8Array[] = [];
+    let totalBytes = 0;
+    if (reader) {
+      try {
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          totalBytes += value.byteLength;
+          if (totalBytes > MAX_UPSTREAM_RESPONSE_BYTES) {
+            await reader.cancel("upstream_response_too_large");
+            throw new Error("upstream_response_too_large");
+          }
+          chunks.push(value);
+        }
+      } finally {
+        reader.releaseLock();
+      }
+    }
+    const bytes = new Uint8Array(totalBytes);
+    let offset = 0;
+    for (const chunk of chunks) {
+      bytes.set(chunk, offset);
+      offset += chunk.byteLength;
+    }
     const responseHeaders = new Headers({ "content-type": response.headers.get("content-type") ?? "application/json", "cache-control": "no-store" });
     const setCookie = response.headers.get("set-cookie");
     if (setCookie) responseHeaders.set("set-cookie", setCookie);
