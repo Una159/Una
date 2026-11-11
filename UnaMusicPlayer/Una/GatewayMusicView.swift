@@ -292,6 +292,8 @@ struct GatewayMusicView: View {
     @State private var qrStatus = "尚未登录"
     @State private var cookie: String?
     @State private var isLoading = false
+    @State private var isCheckingConnection = false
+    @State private var connectionStatus = "尚未检测"
     @State private var errorMessage: String?
 
     private let ink = Color(red: 0.91, green: 0.96, blue: 0.94)
@@ -370,6 +372,26 @@ struct GatewayMusicView: View {
                     .font(.system(size: 12, weight: .semibold))
                     .foregroundStyle(Color.black).padding(.horizontal, 14).padding(.vertical, 10)
                     .background(mint, in: Capsule())
+            }
+            HStack(spacing: 10) {
+                Button {
+                    Task { await checkGatewayAndSearch() }
+                } label: {
+                    HStack(spacing: 7) {
+                        if isCheckingConnection { ProgressView().tint(ink) }
+                        else { Image(systemName: "waveform.path.ecg") }
+                        Text(isCheckingConnection ? "检测中…" : "检测网关与搜索")
+                    }
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundStyle(ink)
+                    .padding(.horizontal, 14).padding(.vertical, 10)
+                    .background(.white.opacity(0.09), in: Capsule())
+                }
+                .disabled(isCheckingConnection)
+                Text(connectionStatus)
+                    .font(.system(size: 10, weight: .medium))
+                    .foregroundStyle(connectionStatus.contains("成功") ? mint : .white.opacity(0.55))
+                    .lineLimit(2)
             }
         }
         .padding(15).background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 20))
@@ -505,6 +527,32 @@ struct GatewayMusicView: View {
         let key = UnaCredentialVault.read("gateway-api-key") ?? gatewayKeyDraft
         guard !key.isEmpty else { throw UnaGatewayError.apiError("请先填写并保存 Gateway API Key") }
         return try UnaGatewayAPIClient(baseURL: gatewayBaseURL, apiKey: key)
+    }
+
+    @MainActor
+    private func checkGatewayAndSearch() async {
+        isCheckingConnection = true
+        errorMessage = nil
+        defer { isCheckingConnection = false }
+        do {
+            let client = try makeClient()
+            let configured = try await client.checkHealth()
+            guard configured[provider.rawValue] == true else {
+                connectionStatus = "网关可达，但当前平台 API 未配置"
+                errorMessage = "Cloudflare Worker 已响应，但 \(provider.rawValue) 上游服务未配置。请先配置真实 HTTPS API 地址。"
+                return
+            }
+            let keyword = searchText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? "周杰伦" : searchText
+            let results = try await client.search(provider: provider, keywords: keyword, limit: 5, cookie: cookie)
+            tracks = results
+            connectionStatus = "连接成功 · 搜到 \(results.count) 首"
+            if results.isEmpty {
+                errorMessage = "网关和上游接口可访问，但搜索结果为空。请检查上游 API 的搜索路径及返回数据格式。"
+            }
+        } catch {
+            connectionStatus = "检测失败"
+            errorMessage = error.localizedDescription
+        }
     }
 
     @MainActor
