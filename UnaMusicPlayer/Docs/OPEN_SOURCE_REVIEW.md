@@ -22,7 +22,7 @@ Status: preparation only. This change does not make the repository public or ann
 
 ### Release blockers
 
-1. The owner has selected the final Una icon (1024×1024 source image). The source was converted locally to PNG, but the binary has not yet been committed into the AppIcon asset catalog; add it and verify it in Xcode before release.
+1. The selected 1024×1024 AppIcon PNG and its AppIcon.appiconset Contents.json are now committed on feature/una-ios-xcode. Xcode asset-catalog validation and a fresh CI run on the icon commit are still required before release.
 2. Validate background playback, lock screen, AirPlay, interruptions and file import on physical iPhones.
 3. Verify real QR login, logout, search, pagination, playlists, lyrics and authorized playback for each provider.
 4. Review upstream adapter repositories, versions and licenses before bundling or deploying them. Keep notices and attribution.
@@ -33,8 +33,8 @@ Status: preparation only. This change does not make the repository public or ann
 ## Public-release checklist
 
 - [ ] Owner accepts review and approves public visibility.
-- [x] Latest iOS Simulator build and Una Quality Gate pass at commit `adafb604498902d5ba020a61e95f41d90ade7745`.
-- [ ] Final app icon binary is present and verified in Xcode.
+- [ ] Re-run iOS Simulator build and Una Quality Gate on the current icon commit; the previous successful runs were on `34d9c3ee61f8d0b0b51f9b2fa097b88de99a013d`.
+- [x] Final app icon PNG and AppIcon.appiconset Contents.json are committed; [ ] verify asset-catalog compilation in Xcode.
 - [ ] Physical-device QA is documented.
 - [ ] Real provider login and playback are verified.
 - [ ] Provider adapter licenses and terms are reviewed.
