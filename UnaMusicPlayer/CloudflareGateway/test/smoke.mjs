@@ -30,6 +30,7 @@ globalThis.fetch = async (input) => {
   if (url.pathname === "/login/checkQrcode") return Response.json({ data: { status: "DONE", credential: "qq-cookie" } });
   if (url.pathname === "/song/urls" && url.hostname === "qqmusic.example") return Response.json({ data: { tracks: [{ media: { playUrl: "https://media.example/qq.mp3" } }] } });
   if (url.pathname === "/search/general" && url.hostname === "qqmusic.example") return Response.json({ data: { body: { song: { list: [{ songmid: "qq-mid", songname: "QQ 测试歌曲", singer: [{ name: "QQ 测试歌手" }], albumname: "测试专辑" }] } } } });
+  if (url.pathname === "/search" && url.hostname === "qishui.example" && url.searchParams.get("keyword") === "oversized") return new Response("{}", { headers: { "content-length": String(5 * 1024 * 1024) } });
   if (url.pathname === "/search") return Response.json({ data: [{ id: "s1", name: "测试曲目", singer: "测试歌手", url: "https://media.example/audio.mp3" }] });
   if (url.pathname === "/lyric") return Response.json({ data: { lyric: "[00:01.00]测试歌词" } });
   return Response.json({ data: [] });
@@ -89,6 +90,8 @@ try {
 
   const search = await (await call("/una/v1/qishui/search?keywords=demo")).json();
   assert.equal(search.data[0].title, "测试曲目");
+  const oversized = await call("/una/v1/qishui/search?keywords=oversized");
+  assert.equal(oversized.status, 502);
 
   const qqSearch = await (await call("/una/v1/qqmusic/search?keywords=demo&limit=100")).json();
   assert.equal(qqSearch.data[0].id, "qq-mid");
