@@ -487,8 +487,8 @@ struct GatewayMusicView: View {
 
     @MainActor
     private func play(_ track: UnaGatewayTrack) async {
-        if audioController.currentTrackID == track.id && audioController.isPlaying {
-            audioController.pause()
+        if audioController.currentTrackID == track.id {
+            audioController.isPlaying ? audioController.pause() : audioController.resume()
             return
         }
         isLoading = true; errorMessage = nil
