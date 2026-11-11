@@ -1,0 +1,10 @@
+# Local-only Worker variables. Copy to .dev.vars and replace every placeholder.
+# Never commit .dev.vars or real credentials.
+GATEWAY_API_KEY="replace-with-a-long-random-secret"
+ALLOWED_ORIGIN=""
+
+# HTTPS origins of separately deployed, trusted provider adapters.
+NETEASE_ORIGIN="https://replace-with-netease-adapter.example"
+KUGOU_ORIGIN="https://replace-with-kugou-adapter.example"
+QISHUI_ORIGIN="https://replace-with-qishui-adapter.example"
+QQMUSIC_ORIGIN="https://replace-with-qqmusic-adapter.example"
