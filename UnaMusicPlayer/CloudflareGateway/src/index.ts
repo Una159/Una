@@ -19,7 +19,35 @@ function json(data: unknown, status = 200, extra: HeadersInit = {}) {
 function providerOrigin(env: Env, provider: Provider): string | undefined {
   const value = ({ netease: env.NETEASE_ORIGIN, kugou: env.KUGOU_ORIGIN, qishui: env.QISHUI_ORIGIN, qqmusic: env.QQMUSIC_ORIGIN })[provider];
   if (!value) return undefined;
-  try { const u = new URL(value); return u.protocol === "https:" ? u.origin : undefined; } catch { return undefined; }
+  try {
+    const u = new URL(value);
+    if (u.protocol !== "https:" || !u.hostname || u.username || u.password || (u.pathname !== "/" && u.pathname !== "") || u.search || u.hash) return undefined;
+    return u.origin;
+  } catch { return undefined; }
+}
+function cookieHeaderFromSetCookie(value: string | null): string | undefined {
+  if (!value) return undefined;
+  const pairs = value.split(/,(?=[^;,=\s]+=)/)
+    .map(part => part.split(";", 1)[0].trim())
+    .filter(part => /^[^=;,\s]+=/.test(part));
+  return pairs.length ? [...new Set(pairs)].join("; ") : undefined;
+}
+function firstPlayableURL(payload: any, depth = 0): string | undefined {
+  if (!payload || depth > 5) return undefined;
+  if (Array.isArray(payload)) {
+    for (const item of payload) { const found = firstPlayableURL(item, depth + 1); if (found) return found; }
+    return undefined;
+  }
+  if (typeof payload !== "object") return undefined;
+  for (const key of ["url", "playUrl", "play_url", "streamURL", "media_url", "audio"]) {
+    const candidate = payload[key];
+    if (typeof candidate === "string" && /^https:\/\//i.test(candidate)) return candidate;
+  }
+  for (const value of Object.values(payload)) {
+    const found = firstPlayableURL(value, depth + 1);
+    if (found) return found;
+  }
+  return undefined;
 }
 function first(obj: any, keys: string[]): any {
   for (const key of keys) if (obj?.[key] !== undefined && obj?.[key] !== null) return obj[key];
@@ -43,15 +71,22 @@ function normalizeTrack(row: any, provider: Provider) {
     : typeof rawArtist === "object" && rawArtist !== null
       ? String(first(rawArtist, ["name", "title", "nick"]) ?? "未知歌手")
       : String(rawArtist ?? "未知歌手");
+  const rawAlbum = first(row, ["album", "albumName", "albumname"]);
+  const album = typeof rawAlbum === "string" ? rawAlbum : first(rawAlbum, ["name", "title"]) ?? null;
+  const rawDuration = Number(first(row, ["duration", "interval", "dt"]) ?? 0);
+  const duration = rawDuration > 10000 ? rawDuration / 1000 : rawDuration || null;
+  const artwork = first(row, ["artworkURL", "artwork", "picUrl", "cover", "coverUrl"]);
+  const page = first(row, ["pageURL", "shareUrl", "webUrl"]);
+  const stream = first(row, ["streamURL", "playUrl", "play_url", "media_url"]);
   return {
     id: String(first(row, ["id", "songId", "songid", "mid", "songmid", "hash", "track_id", "trackId"]) ?? ""),
     title: String(first(row, ["title", "name", "songName", "songname"]) ?? "未知歌曲"),
     artist,
-    album: first(row, ["album", "albumName", "albumname"]) ?? null,
-    duration: Number(first(row, ["duration", "interval", "dt"]) ?? 0) || null,
-    artworkURL: first(row, ["artworkURL", "artwork", "picUrl", "cover", "coverUrl", "albummid"]) ?? null,
-    pageURL: first(row, ["pageURL", "shareUrl", "webUrl", "url"]) ?? null,
-    streamURL: first(row, ["streamURL", "playUrl", "url", "audio", "media_url"]) ?? null,
+    album: album == null ? null : String(album),
+    duration,
+    artworkURL: typeof artwork === "string" && /^https:\/\//i.test(artwork) ? artwork : null,
+    pageURL: typeof page === "string" ? page : null,
+    streamURL: typeof stream === "string" && /^https:\/\//i.test(stream) ? stream : null,
     provider
   };
 }
@@ -131,8 +166,12 @@ async function callUpstream(origin: string, path: string, method: string, incomi
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
     const url = new URL(request.url);
-    const corsOrigin = env.ALLOWED_ORIGIN ?? "null";
-    const cors = { "access-control-allow-origin": corsOrigin, "access-control-allow-methods": "GET,POST,OPTIONS", "access-control-allow-headers": "content-type,authorization,cookie,x-una-gateway-key", "vary": "origin" };
+    const allowedOrigins = (env.ALLOWED_ORIGIN ?? "").split(",").map(value => value.trim()).filter(Boolean);
+    const requestOrigin = request.headers.get("origin");
+    const originAllowed = !requestOrigin || allowedOrigins.includes(requestOrigin);
+    const corsOrigin = requestOrigin && originAllowed ? requestOrigin : (allowedOrigins.length === 1 ? allowedOrigins[0] : "null");
+    const cors = { "access-control-allow-origin": corsOrigin, "access-control-allow-methods": "GET,POST,OPTIONS", "access-control-allow-headers": "content-type,authorization,cookie,x-una-gateway-key", "access-control-max-age": "600", "vary": "origin" };
+    if (!originAllowed) return json({ code: 403, message: "origin_not_allowed" }, 403, cors);
     if (request.method === "OPTIONS") return new Response(null, { status: 204, headers: cors });
     // Fail closed: never expose provider adapters when the gateway secret is missing or mismatched.
     if (!env.GATEWAY_API_KEY || request.headers.get("x-una-gateway-key") !== env.GATEWAY_API_KEY) return json({ code: 401, message: "unauthorized" }, 401, cors);
@@ -142,6 +181,9 @@ export default {
     const legacyNeteaseQRMatch = url.pathname.match(/^\/login\/qr\/(key|create|check)$/);
     const apiMatch = url.pathname.match(/^\/una\/v1\/(netease|kugou|qishui|qqmusic)\/(search|song\/url|lyric|playlist|playlist\/tracks)$/);
     if (!authMatch && !legacyNeteaseQRMatch && !apiMatch) return json({ code: 404, message: "route_not_found" }, 404, cors);
+    if (apiMatch && request.method !== "GET") return json({ code: 405, message: "method_not_allowed" }, 405, { ...cors, allow: "GET, OPTIONS" });
+    if (authMatch && !["GET", "POST"].includes(request.method)) return json({ code: 405, message: "method_not_allowed" }, 405, { ...cors, allow: "GET, POST, OPTIONS" });
+    if (legacyNeteaseQRMatch && request.method !== "GET") return json({ code: 405, message: "method_not_allowed" }, 405, { ...cors, allow: "GET, OPTIONS" });
     if (apiMatch) {
       const keywords = url.searchParams.get("keywords") ?? "";
       const id = url.searchParams.get("id") ?? "";
@@ -232,7 +274,7 @@ export default {
       }
       if (authMatch && provider === "netease" && authMatch[2] === "check") {
         const code = Number(parsed?.code ?? parsed?.data?.code ?? 0);
-        const credential = upstream.headers.get("set-cookie") ?? first(parsed?.data, ["cookie", "credential"]);
+        const credential = cookieHeaderFromSetCookie(upstream.headers.get("set-cookie")) ?? first(parsed?.data, ["cookie", "credential"]);
         if (code === 803 || credential) return json({ status: "success", credential: credential ?? null }, 200, cors);
         return json({ status: code === 801 ? "scanned" : code === 802 ? "expired" : "waiting", message: first(parsed, ["message", "msg"]) ?? null }, 200, cors);
       }
@@ -289,7 +331,7 @@ export default {
         const translated = typeof translatedRaw === "string" ? translatedRaw : first(translatedRaw, ["lyric"]) ?? null;
         return json({ code: 0, message: "success", data: { lyric, translated } }, 200, cors);
       }
-      const stream = first(parsed?.data?.[0], ["url", "playUrl"]) ?? first(parsed?.data, ["url", "playUrl", "play_url"]) ?? first(parsed, ["url", "playUrl", "play_url"]);
+      const stream = firstPlayableURL(parsed);
       return json({ code: 0, message: stream ? "success" : "not_playable_or_not_authorized", data: { url: stream ?? null } }, 200, cors);
     } catch {
       return json({ code: 502, message: "adapter_request_failed", provider }, 502, cors);
