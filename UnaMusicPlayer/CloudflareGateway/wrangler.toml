@@ -14,6 +14,24 @@ compatibility_date = "2026-11-10"
 enabled = true
 head_sampling_rate = 0.1
 
+# Cloudflare Rate Limiting bindings. Namespace IDs must be unused in your
+# Cloudflare account; choose different positive integers if either is already in use.
+[[ratelimits]]
+name = "API_RATE_LIMITER"
+namespace_id = "742019"
+
+  [ratelimits.simple]
+  limit = 120
+  period = 60
+
+[[ratelimits]]
+name = "QR_RATE_LIMITER"
+namespace_id = "742020"
+
+  [ratelimits.simple]
+  limit = 6
+  period = 60
+
 # After creating a KV namespace, bind it here:
 # [[kv_namespaces]]
 # binding = "QR_SESSIONS"
