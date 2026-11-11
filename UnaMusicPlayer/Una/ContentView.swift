@@ -209,15 +209,50 @@ struct ContentView: View {
     }
 
     private var tabBar: some View {
-        HStack {
+        HStack(spacing: 4) {
             tab("music.note.list", title: "音乐", index: 0)
             tab("square.stack", title: "歌单", index: 1)
             tab("globe", title: "在线", index: 2)
             tab("slider.horizontal.3", title: "设置", index: 3)
         }
-        .padding(.top, 12).padding(.bottom, 8)
-        .background(.ultraThinMaterial)
-        .overlay(alignment: .top) { Rectangle().fill(.white.opacity(0.08)).frame(height: 0.5) }
+        .padding(.horizontal, 9)
+        .padding(.vertical, 11)
+        .background {
+            Capsule()
+                .fill(.ultraThinMaterial)
+                .overlay {
+                    Capsule()
+                        .fill(
+                            LinearGradient(
+                                colors: [.white.opacity(0.17), .white.opacity(0.035), .white.opacity(0.075)],
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            )
+                        )
+                }
+                .overlay {
+                    Capsule().strokeBorder(
+                        LinearGradient(
+                            colors: [.white.opacity(0.42), .white.opacity(0.12), .white.opacity(0.20)],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        ),
+                        lineWidth: 1
+                    )
+                }
+                .shadow(color: .black.opacity(0.38), radius: 22, x: 0, y: 11)
+                .shadow(color: mint.opacity(0.10), radius: 14, x: 0, y: 0)
+        }
+        .overlay(alignment: .top) {
+            Capsule()
+                .fill(.white.opacity(0.30))
+                .frame(height: 1)
+                .padding(.horizontal, 34)
+                .padding(.top, 1)
+        }
+        .padding(.horizontal, 24)
+        .padding(.top, 7)
+        .padding(.bottom, 9)
     }
 
     private func tab(_ icon: String, title: String, index: Int) -> some View {
