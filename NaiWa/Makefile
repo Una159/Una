@@ -6,7 +6,7 @@ INSTALL_TARGET_PROCESSES = SpringBoard
 include $(THEOS)/makefiles/common.mk
 
 TWEAK_NAME = NaiWa
-NaiWa_FILES = Tweak.xm NWConfig.m NWHookRegistry.m
+NaiWa_FILES = Tweak.xm NWConfig.m NWFeatureKeys.m NWHookRegistry.m
 NaiWa_CFLAGS = -fobjc-arc -Wall
 NaiWa_FRAMEWORKS = UIKit Foundation
 
