@@ -3,6 +3,7 @@ import AVFoundation
 import Security
 import CoreFoundation
 import UIKit
+import MediaPlayer
 
 private enum UnaCredentialVault {
     private static let service = "com.una.music.credentials"
@@ -44,6 +45,198 @@ private enum UnaCredentialVault {
     }
 }
 
+
+/// Owns the single online playback session so audio continues while SwiftUI tabs change.
+@MainActor
+private final class UnaRemoteAudioController: ObservableObject {
+    static let shared = UnaRemoteAudioController()
+
+    @Published private(set) var currentTrackID: String?
+    @Published private(set) var isPlaying = false
+
+    private var player: AVPlayer?
+    private var timeObserver: Any?
+    private var endObserver: NSObjectProtocol?
+    private var interruptionObserver: NSObjectProtocol?
+    private var routeObserver: NSObjectProtocol?
+    private var playbackObservation: NSKeyValueObservation?
+    private var resumeAfterInterruption = false
+
+    private init() {
+        configureRemoteCommands()
+        observeAudioSession()
+    }
+
+    func play(url: URL, track: UnaGatewayTrack) throws {
+        guard url.scheme?.lowercased() == "https" else {
+            throw UnaGatewayError.apiError("播放地址必须使用 HTTPS")
+        }
+
+        let audioSession = AVAudioSession.sharedInstance()
+        try audioSession.setCategory(.playback, mode: .default, options: [])
+        try audioSession.setActive(true)
+
+        clearObservers()
+        player?.pause()
+
+        let item = AVPlayerItem(url: url)
+        let nextPlayer = AVPlayer(playerItem: item)
+        nextPlayer.allowsExternalPlayback = true
+        player = nextPlayer
+        currentTrackID = track.id
+
+        playbackObservation = nextPlayer.observe(\.timeControlStatus, options: [.initial, .new]) { [weak self] observedPlayer, _ in
+            Task { @MainActor in
+                guard let self else { return }
+                self.isPlaying = observedPlayer.timeControlStatus == .playing
+                self.updatePlaybackRate()
+            }
+        }
+
+        endObserver = NotificationCenter.default.addObserver(
+            forName: .AVPlayerItemDidPlayToEndTime,
+            object: item,
+            queue: .main
+        ) { [weak self] _ in
+            Task { @MainActor in self?.stop() }
+        }
+
+        timeObserver = nextPlayer.addPeriodicTimeObserver(
+            forInterval: CMTime(seconds: 1, preferredTimescale: 600),
+            queue: .main
+        ) { [weak self] time in
+            Task { @MainActor in self?.updateElapsedTime(time.seconds) }
+        }
+
+        updateNowPlaying(title: track.title, artist: track.artist, album: track.album, duration: track.duration)
+        nextPlayer.play()
+    }
+
+    func pause() {
+        player?.pause()
+        isPlaying = false
+        updatePlaybackRate()
+    }
+
+    func resume() {
+        guard player != nil else { return }
+        player?.play()
+        updatePlaybackRate()
+    }
+
+    func togglePlayback() {
+        isPlaying ? pause() : resume()
+    }
+
+    func stop() {
+        player?.pause()
+        player?.replaceCurrentItem(with: nil)
+        clearObservers()
+        player = nil
+        currentTrackID = nil
+        isPlaying = false
+        MPNowPlayingInfoCenter.default().nowPlayingInfo = nil
+    }
+
+    private func clearObservers() {
+        if let timeObserver, let player {
+            player.removeTimeObserver(timeObserver)
+        }
+        timeObserver = nil
+        if let endObserver {
+            NotificationCenter.default.removeObserver(endObserver)
+        }
+        endObserver = nil
+        playbackObservation = nil
+    }
+
+    private func configureRemoteCommands() {
+        let commands = MPRemoteCommandCenter.shared()
+        commands.playCommand.addTarget { [weak self] _ in
+            Task { @MainActor in self?.resume() }
+            return .success
+        }
+        commands.pauseCommand.addTarget { [weak self] _ in
+            Task { @MainActor in self?.pause() }
+            return .success
+        }
+        commands.togglePlayPauseCommand.addTarget { [weak self] _ in
+            Task { @MainActor in self?.togglePlayback() }
+            return .success
+        }
+        commands.changePlaybackPositionCommand.addTarget { [weak self] event in
+            guard let position = event as? MPChangePlaybackPositionCommandEvent else { return .commandFailed }
+            Task { @MainActor in
+                self?.player?.seek(to: CMTime(seconds: position.positionTime, preferredTimescale: 600))
+            }
+            return .success
+        }
+        commands.nextTrackCommand.isEnabled = false
+        commands.previousTrackCommand.isEnabled = false
+    }
+
+    private func observeAudioSession() {
+        interruptionObserver = NotificationCenter.default.addObserver(
+            forName: AVAudioSession.interruptionNotification,
+            object: AVAudioSession.sharedInstance(),
+            queue: .main
+        ) { [weak self] notification in
+            Task { @MainActor in
+                guard let self,
+                      let raw = notification.userInfo?[AVAudioSessionInterruptionTypeKey] as? UInt,
+                      let type = AVAudioSession.InterruptionType(rawValue: raw) else { return }
+                if type == .began {
+                    self.resumeAfterInterruption = self.isPlaying
+                    self.pause()
+                } else if type == .ended {
+                    let rawOptions = notification.userInfo?[AVAudioSessionInterruptionOptionKey] as? UInt ?? 0
+                    let options = AVAudioSession.InterruptionOptions(rawValue: rawOptions)
+                    if self.resumeAfterInterruption && options.contains(.shouldResume) {
+                        self.resume()
+                    }
+                    self.resumeAfterInterruption = false
+                }
+            }
+        }
+
+        routeObserver = NotificationCenter.default.addObserver(
+            forName: AVAudioSession.routeChangeNotification,
+            object: AVAudioSession.sharedInstance(),
+            queue: .main
+        ) { [weak self] notification in
+            guard let raw = notification.userInfo?[AVAudioSessionRouteChangeReasonKey] as? UInt,
+                  AVAudioSession.RouteChangeReason(rawValue: raw) == .oldDeviceUnavailable else { return }
+            Task { @MainActor in self?.pause() }
+        }
+    }
+
+    private func updateNowPlaying(title: String, artist: String, album: String?, duration: Double?) {
+        var info: [String: Any] = [
+            MPMediaItemPropertyTitle: title,
+            MPMediaItemPropertyArtist: artist,
+            MPNowPlayingInfoPropertyPlaybackRate: 0.0,
+            MPNowPlayingInfoPropertyElapsedPlaybackTime: 0.0
+        ]
+        if let album, !album.isEmpty { info[MPMediaItemPropertyAlbumTitle] = album }
+        if let duration, duration > 0 { info[MPMediaItemPropertyPlaybackDuration] = duration }
+        MPNowPlayingInfoCenter.default().nowPlayingInfo = info
+    }
+
+    private func updateElapsedTime(_ elapsed: Double) {
+        guard elapsed.isFinite,
+              var info = MPNowPlayingInfoCenter.default().nowPlayingInfo else { return }
+        info[MPNowPlayingInfoPropertyElapsedPlaybackTime] = max(0, elapsed)
+        info[MPNowPlayingInfoPropertyPlaybackRate] = isPlaying ? 1.0 : 0.0
+        MPNowPlayingInfoCenter.default().nowPlayingInfo = info
+    }
+
+    private func updatePlaybackRate() {
+        guard var info = MPNowPlayingInfoCenter.default().nowPlayingInfo else { return }
+        info[MPNowPlayingInfoPropertyPlaybackRate] = isPlaying ? 1.0 : 0.0
+        MPNowPlayingInfoCenter.default().nowPlayingInfo = info
+    }
+}
+
 struct GatewayMusicView: View {
     @AppStorage("una.gateway.baseURL") private var gatewayBaseURL = ""
     @State private var gatewayKeyDraft = ""
@@ -52,8 +245,7 @@ struct GatewayMusicView: View {
     @State private var tracks: [UnaGatewayTrack] = []
     @State private var playlists: [UnaGatewayPlaylist] = []
     @State private var selectedLyrics: String?
-    @State private var remotePlayer: AVPlayer?
-    @State private var playingTrackID: String?
+    @StateObject private var audioController = UnaRemoteAudioController.shared
     @State private var qrSession: UnaGatewayQRSession?
     @State private var qrStatus = "尚未登录"
     @State private var cookie: String?
@@ -206,9 +398,9 @@ struct GatewayMusicView: View {
                         Image(systemName: "text.quote").foregroundStyle(.white.opacity(0.7))
                     }.accessibilityLabel("查看歌词")
                     Button { Task { await play(track) } } label: {
-                        Image(systemName: playingTrackID == track.id ? "pause.fill" : "play.fill")
+                        Image(systemName: audioController.currentTrackID == track.id && audioController.isPlaying ? "pause.fill" : "play.fill")
                             .foregroundStyle(mint).frame(width: 34, height: 34)
-                    }.accessibilityLabel("播放")
+                    }.accessibilityLabel(audioController.currentTrackID == track.id && audioController.isPlaying ? "暂停" : "播放")
                 }
                 .padding(.vertical, 7)
                 Divider().overlay(.white.opacity(0.06))
@@ -295,22 +487,15 @@ struct GatewayMusicView: View {
 
     @MainActor
     private func play(_ track: UnaGatewayTrack) async {
-        if playingTrackID == track.id {
-            remotePlayer?.pause()
-            playingTrackID = nil
+        if audioController.currentTrackID == track.id && audioController.isPlaying {
+            audioController.pause()
             return
         }
         isLoading = true; errorMessage = nil
         defer { isLoading = false }
         do {
             let url = try await makeClient().songURL(provider: provider, id: track.id, cookie: cookie)
-            try AVAudioSession.sharedInstance().setCategory(.playback, mode: .default, options: [])
-            try AVAudioSession.sharedInstance().setActive(true)
-            let nextPlayer = AVPlayer(url: url)
-            remotePlayer?.pause()
-            remotePlayer = nextPlayer
-            playingTrackID = track.id
-            nextPlayer.play()
+            try audioController.play(url: url, track: track)
         } catch { errorMessage = error.localizedDescription }
     }
 
