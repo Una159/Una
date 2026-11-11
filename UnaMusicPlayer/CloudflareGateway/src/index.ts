@@ -166,10 +166,9 @@ async function enforceRateLimit(
   try {
     const result = await limiter.limit({ key: `una:${isQR ? "qr" : "api"}:${route}:${clientIP}` });
     if (!result.success) {
-      return json({ code: 429, message: "rate_limit_exceeded" }, 429, {
-        ...Object.fromEntries(new Headers(cors).entries()),
-        "retry-after": "60"
-      });
+      const headers = new Headers(cors);
+      headers.set("retry-after", "60");
+      return json({ code: 429, message: "rate_limit_exceeded" }, 429, headers);
     }
     return undefined;
   } catch {
