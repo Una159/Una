@@ -162,6 +162,8 @@ function goMusicTarget(provider: Provider, kind: RouteKind, q: URLSearchParams, 
   if (kind === "search") {
     p.set("q", q.get("keywords") ?? q.get("q") ?? "");
     p.set("type", "song");
+    p.delete("source");
+    p.append("sources", source);
     p.delete("id"); p.delete("name"); p.delete("artist"); p.delete("album"); p.delete("cover"); p.delete("duration"); p.delete("extra");
     return { path: `/api/v1/music/search?${p.toString()}`, method: "GET" };
   }
