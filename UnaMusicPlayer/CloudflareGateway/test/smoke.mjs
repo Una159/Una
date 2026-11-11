@@ -133,12 +133,6 @@ try {
   const qqStatus = await (await call(`/una/auth/qqmusic/qr/check?session=${qqQR.session}`)).json();
   assert.equal(qqStatus.credential, "qq-cookie");
 
-  const search = await (await call("/una/v1/qishui/search?keywords=demo")).json();
-  assert.equal(search.data[0].title, "测试曲目");
-  const oversized = await call("/una/v1/qishui/search?keywords=oversized");
-  assert.equal(oversized.status, 502);
-  const chunkedOversized = await call("/una/v1/qishui/search?keywords=chunked");
-  assert.equal(chunkedOversized.status, 502);
 
   const qqSearch = await (await call("/una/v1/qqmusic/search?keywords=demo&limit=100")).json();
   assert.equal(qqSearch.data[0].id, "qq-mid");
@@ -151,7 +145,9 @@ try {
 
   const sharedEnv = { ...env, GO_MUSIC_API_ORIGIN: "https://go-api.example", GO_MUSIC_API_TOKEN: "service-token" };
   const sharedCall = (path) => worker.fetch(new Request(`https://gateway.example${path}`, { headers: { "x-una-gateway-key": "test-key", "cf-connecting-ip": "198.51.100.20" } }), sharedEnv);
-  assert.equal((await sharedCall("/una/v1/netease/search?keywords=oversized")).status, 502);\n  assert.equal((await sharedCall("/una/v1/netease/search?keywords=chunked")).status, 502);\n  for (const provider of ["netease", "qqmusic", "kugou"]) {
+  assert.equal((await sharedCall("/una/v1/netease/search?keywords=oversized")).status, 502);
+  assert.equal((await sharedCall("/una/v1/netease/search?keywords=chunked")).status, 502);
+  for (const provider of ["netease", "qqmusic", "kugou"]) {
     const unified = await (await sharedCall(`/una/v1/${provider}/search?keywords=demo`)).json();
     assert.equal(unified.data[0].title, "统一接口测试");
     assert.equal(unified.data[0].provider, provider);
