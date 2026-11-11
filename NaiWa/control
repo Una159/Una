@@ -1,0 +1,9 @@
+Package: com.una159.naiwa
+Name: NaiWa
+Version: 0.1.0
+Architecture: iphoneos-arm64
+Description: NaiWa reconstruction build scaffold
+Maintainer: Una159
+Author: Una159
+Section: Tweaks
+Depends: firmware (>= 15.0)
