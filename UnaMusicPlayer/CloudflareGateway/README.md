@@ -19,8 +19,9 @@ The Worker is a gateway, not a provider implementation. Each provider origin mus
 2. Configure HTTPS Worker variables: `NETEASE_ORIGIN`, `KUGOU_ORIGIN`, `QISHUI_ORIGIN`, `QQMUSIC_ORIGIN`.
 3. Set `GATEWAY_API_KEY` as a Worker secret and enter the same value in Una Settings → Music Platform Integration → Gateway Access Key.
 4. Create a KV namespace with `npx wrangler kv namespace create QR_SESSIONS`, then bind its ID in `wrangler.toml`.
-5. Deploy with `npx wrangler deploy`.
-6. Check `/health`. This reports configured origins only; it does not prove provider login works.
+5. Verify `API_RATE_LIMITER` and `QR_RATE_LIMITER` use positive namespace IDs not already used by another Worker in your Cloudflare account. The checked-in IDs are project defaults; change them if they collide.
+6. Deploy with `npx wrangler deploy`.
+7. Check `/health`. This reports configured origins only; it does not prove provider login works.
 
 ## Unified routes
 
@@ -38,12 +39,14 @@ Provider IDs: `netease`, `kugou`, `qishui`, `qqmusic`.
 
 - Production upstream origins must use HTTPS.
 - Keep upstream cookies and tokens in server-side adapter storage or iOS Keychain; never log them.
-- Add rate limiting and restrict upstream services to Worker egress where practical.
+- The Worker enforces Cloudflare Rate Limiting bindings: API routes are limited to 120 requests/minute per client IP and route; QR routes are limited to 6 requests/minute per client IP and route. Exceeded requests return HTTP 429 with `Retry-After: 60`. These limits are approximate and local to each Cloudflare location, not a strict global quota or a per-user identity system.
+- Keep upstream services private to Worker egress where practical. Add account-level WAF/abuse controls and per-user quotas before a public multi-user launch.
 - Return only playback URLs authorized for the current account, territory and subscription. Never bypass DRM, memberships or access controls.
 - Community adapters are unofficial and may break when providers change protocols.
 
 ## Known limitations before production
 
+- Cloudflare Rate Limiting counters are approximate and location-local; the shared client API key does not identify individual users. Add a trusted user identity layer and global/per-user abuse controls before public multi-user launch.
 - Provider-specific QR response/session normalization still requires tests against exact deployed adapter versions.
 - Qishui QR confirmation behavior must be verified with the actual scanning app.
 - QQ QR sessions require the KV namespace.
