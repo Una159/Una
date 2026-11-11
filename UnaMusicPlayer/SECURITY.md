@@ -20,7 +20,7 @@ If a secret is committed, revoke or rotate it immediately. Removing it from a la
 
 - Keep TLS verification enabled.
 - Validate provider and redirect URLs; do not create open proxies.
-- Apply authentication, rate limiting and bounded request sizes to gateway routes.
+- Apply authentication, rate limiting and bounded request sizes to gateway routes. The current Worker enforces an API key, origin allowlist and bounded upstream response/time; production rate limiting and abuse monitoring still require Cloudflare-side configuration.
 - Avoid logging authorization headers, cookies and query parameters containing credentials.
 - Store client credentials in Keychain and server credentials in platform secret storage.
 - Do not bypass DRM, subscription checks or provider access controls.
