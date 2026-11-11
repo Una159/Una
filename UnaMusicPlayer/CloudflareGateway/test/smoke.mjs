@@ -149,6 +149,27 @@ try {
   const lyric = await (await call("/una/v1/netease/lyric?id=s1")).json();
   assert.equal(lyric.data.lyric, "[00:01.00]测试歌词");
 
+  const sharedEnv = { ...env, GO_MUSIC_API_ORIGIN: "https://go-api.example", GO_MUSIC_API_TOKEN: "service-token" };
+  const sharedCall = (path) => worker.fetch(new Request(`https://gateway.example${path}`, { headers: { "x-una-gateway-key": "test-key", "cf-connecting-ip": "198.51.100.20" } }), sharedEnv);
+  for (const provider of ["netease", "qqmusic", "kugou"]) {
+    const unified = await (await sharedCall(`/una/v1/${provider}/search?keywords=demo`)).json();
+    assert.equal(unified.data[0].title, "统一接口测试");
+    assert.equal(unified.data[0].provider, provider);
+  }
+  const sharedURL = await (await sharedCall("/una/v1/netease/song/url?id=go-1&name=统一接口测试&artist=测试歌手")).json();
+  assert.equal(sharedURL.data.url, "https://media.example/go.mp3");
+  const sharedLyric = await (await sharedCall("/una/v1/kugou/lyric?id=go-1&name=统一接口测试&artist=测试歌手")).json();
+  assert.equal(sharedLyric.data.lyric, "[00:01.00]统一歌词");
+  const sharedPlaylist = await (await sharedCall("/una/v1/qqmusic/playlist")).json();
+  assert.equal(sharedPlaylist.data[0].name, "测试歌单");
+  const sharedTracks = await (await sharedCall("/una/v1/netease/playlist/tracks?id=pl-1")).json();
+  assert.equal(sharedTracks.data[0].title, "统一接口测试");
+  const sharedQR = await (await sharedCall("/una/auth/netease/qr/create")).json();
+  assert.equal(sharedQR.session, "go-qr-key");
+  const sharedQRStatus = await (await sharedCall(`/una/auth/netease/qr/check?session=${sharedQR.session}`)).json();
+  assert.equal(sharedQRStatus.status, "success");
+  assert.equal("credential" in sharedQRStatus, false);
+
   console.log("Una gateway smoke tests passed");
 } finally {
   globalThis.fetch = originalFetch;
