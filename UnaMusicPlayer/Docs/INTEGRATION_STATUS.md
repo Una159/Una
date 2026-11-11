@@ -9,13 +9,15 @@ This file is the source-of-truth checklist for the current integration branch.
 - Do not merge into `main` until the owner explicitly approves the release.
 - Product target: a native iOS music player with a unified provider experience.
 
-## Current code included in the local integration package
+## Current code on this branch
 
-- Native SwiftUI app and AVFoundation playback layer.
-- Provider-facing client for Netease, Kugou, Qishui and QQ Music.
-- Cloudflare Worker gateway scaffold with normalized search, playlist, lyric, stream URL and QR session routes.
-- Keychain-backed client credential storage.
-- User-approved 1024 × 1024 Una logo asset.
+- Native SwiftUI app, local music library and AVFoundation playback layer.
+- A new Online Music tab backed by `GatewayMusicView`.
+- Provider selection for Netease, Kugou, Qishui and QQ Music.
+- Gateway client operations for search, song URL resolution, lyrics, playlists, playlist tracks and QR login polling.
+- Gateway API key and provider credentials stored in iOS Keychain.
+- Cloudflare Worker routes and smoke coverage for four QR flows plus search and lyrics.
+- The owner-approved 1024 × 1024 logo is present in the local handoff package; the binary AppIcon asset still needs to be uploaded to this branch.
 
 ## Important release blockers
 
