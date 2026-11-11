@@ -24,3 +24,9 @@ If a secret is committed, revoke or rotate it immediately. Removing it from a la
 - Avoid logging authorization headers, cookies and query parameters containing credentials.
 - Store client credentials in Keychain and server credentials in platform secret storage.
 - Do not bypass DRM, subscription checks or provider access controls.
+
+## Production deployment boundary
+
+- The `GATEWAY_API_KEY` is a shared gateway access gate, not a per-user identity system. Any key entered in a distributed client can be extracted by a determined user; do not treat a client-held key as a durable secret or use it as the only production abuse-control mechanism.
+- Before a public multi-user release, put user authentication or a trusted server-side authorization layer in front of provider routes, apply per-user and per-IP quotas/rate limits, and provide a key rotation/revocation procedure. Keep provider cookies out of URLs and logs.
+- QR login and provider credential behavior must be verified against the exact adapter versions deployed. A successful mocked smoke test does not establish that a provider's real QR flow, credential renewal, or logout semantics work.
