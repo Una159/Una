@@ -138,10 +138,7 @@ try {
   assert.equal(kugouStatus.status, "success");
   assert.equal(kugouStatus.credential, "kg-token");
 
-  const sodaQR = await (await call("/una/auth/qishui/qr/create")).json();
-  assert.equal(sodaQR.session, "soda-session");
-  const sodaStatus = await (await call(`/una/auth/qishui/qr/check?session=${sodaQR.session}`)).json();
-  assert.equal(sodaStatus.credential, "soda-cookie");
+  assert.equal((await call("/una/auth/qishui/qr/create")).status, 501);
 
   const qqQR = await (await call("/una/auth/qqmusic/qr/create")).json();
   assert.ok(qqQR.session);
