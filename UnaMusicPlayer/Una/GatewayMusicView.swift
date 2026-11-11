@@ -8,18 +8,26 @@ import MediaPlayer
 private enum UnaCredentialVault {
     private static let service = "com.una.music.credentials"
 
-    static func save(_ value: String, account: String) {
-        guard let data = value.data(using: .utf8) else { return }
+    static func save(_ value: String, account: String) throws {
+        guard let data = value.data(using: .utf8), !value.isEmpty else {
+            throw UnaGatewayError.apiError("不能保存空的安全凭证")
+        }
         let query: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
             kSecAttrService as String: service,
             kSecAttrAccount as String: account
         ]
-        SecItemDelete(query as CFDictionary)
+        let deleteStatus = SecItemDelete(query as CFDictionary)
+        guard deleteStatus == errSecSuccess || deleteStatus == errSecItemNotFound else {
+            throw UnaGatewayError.apiError("无法更新钥匙串凭证（\(deleteStatus)）")
+        }
         var item = query
         item[kSecValueData as String] = data
         item[kSecAttrAccessible as String] = kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly
-        SecItemAdd(item as CFDictionary, nil)
+        let status = SecItemAdd(item as CFDictionary, nil)
+        guard status == errSecSuccess else {
+            throw UnaGatewayError.apiError("安全凭证保存失败（\(status)）")
+        }
     }
 
     static func read(_ account: String) -> String? {
@@ -36,12 +44,15 @@ private enum UnaCredentialVault {
         return String(data: data, encoding: .utf8)
     }
 
-    static func remove(_ account: String) {
-        SecItemDelete([
+    static func remove(_ account: String) throws {
+        let status = SecItemDelete([
             kSecClass as String: kSecClassGenericPassword,
             kSecAttrService as String: service,
             kSecAttrAccount as String: account
         ] as CFDictionary)
+        guard status == errSecSuccess || status == errSecItemNotFound else {
+            throw UnaGatewayError.apiError("无法清除钥匙串凭证（\(status)）")
+        }
     }
 }
 
@@ -308,8 +319,12 @@ struct GatewayMusicView: View {
                 .font(.system(size: 13)).padding(13)
                 .background(.black.opacity(0.22), in: RoundedRectangle(cornerRadius: 12))
             Button {
-                UnaCredentialVault.save(gatewayKeyDraft, account: "gateway-api-key")
-                errorMessage = nil
+                do {
+                    try UnaCredentialVault.save(gatewayKeyDraft, account: "gateway-api-key")
+                    errorMessage = nil
+                } catch {
+                    errorMessage = error.localizedDescription
+                }
             } label: {
                 Label("安全保存网关配置", systemImage: "lock.fill")
                     .font(.system(size: 12, weight: .semibold))
@@ -360,9 +375,13 @@ struct GatewayMusicView: View {
             }
             if cookie != nil {
                 Button(role: .destructive) {
-                    UnaCredentialVault.remove("cookie-\(provider.rawValue)")
-                    cookie = nil
-                    qrStatus = "已退出"
+                    do {
+                        try UnaCredentialVault.remove("cookie-\(provider.rawValue)")
+                        cookie = nil
+                        qrStatus = "已退出"
+                    } catch {
+                        errorMessage = error.localizedDescription
+                    }
                 } label: {
                     Label("退出此平台账号", systemImage: "rectangle.portrait.and.arrow.right")
                         .font(.system(size: 11)).foregroundStyle(.orange)
@@ -516,7 +535,13 @@ struct GatewayMusicView: View {
                         let state = try await makeClient().checkQRLogin(provider: providerAtStart, sessionID: session.session)
                         qrStatus = state.status
                         if let credential = state.credential, !credential.isEmpty {
-                            UnaCredentialVault.save(credential, account: "cookie-\(providerAtStart.rawValue)")
+                            do {
+                                try UnaCredentialVault.save(credential, account: "cookie-\(providerAtStart.rawValue)")
+                            } catch {
+                                errorMessage = error.localizedDescription
+                                qrStatus = "登录成功，但凭证保存失败"
+                                return
+                            }
                             cookie = credential
                             qrStatus = "登录成功，凭证已安全保存"
                             qrSession = nil
