@@ -3,7 +3,10 @@ main = "src/index.ts"
 compatibility_date = "2026-11-10"
 
 [vars]
-# Configure these as HTTPS origins in Cloudflare Worker settings.
+# Preferred: one shared go-music-api service origin (HTTPS).
+# GO_MUSIC_API_ORIGIN = "https://your-private-go-music-api.example"
+# Set GO_MUSIC_API_TOKEN with wrangler secret put GO_MUSIC_API_TOKEN.
+# Legacy mode only: configure these four origins when not using the shared Go API.
 # NETEASE_ORIGIN = "https://your-netease-api.example"
 # KUGOU_ORIGIN = "https://your-kugou-api.example"
 # QISHUI_ORIGIN = "https://your-qishui-api.example"
