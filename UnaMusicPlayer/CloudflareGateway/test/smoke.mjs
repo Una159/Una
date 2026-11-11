@@ -27,7 +27,7 @@ globalThis.fetch = async (input) => {
   if (url.pathname === "/auth/qrcode/status") return Response.json({ data: { status: "success", auth: { sessionid: "soda-cookie" } } });
   if (url.pathname === "/login/qrcode") return Response.json({ data: { qrsig: "qq-sig", ptqrtoken: "123", qrcode: "aGVsbG8=" } });
   if (url.pathname === "/login/checkQrcode") return Response.json({ data: { status: "DONE", credential: "qq-cookie" } });
-  if (url.pathname === "/search" && url.hostname === "qqmusic.example") return Response.json({ data: { body: { song: { list: [{ songmid: "qq-mid", songname: "QQ 测试歌曲", singer: [{ name: "QQ 测试歌手" }], albumname: "测试专辑" }] } } } });
+  if (url.pathname === "/search/general" && url.hostname === "qqmusic.example") return Response.json({ data: { body: { song: { list: [{ songmid: "qq-mid", songname: "QQ 测试歌曲", singer: [{ name: "QQ 测试歌手" }], albumname: "测试专辑" }] } } } });
   if (url.pathname === "/search") return Response.json({ data: [{ id: "s1", name: "测试曲目", singer: "测试歌手", url: "https://media.example/audio.mp3" }] });
   if (url.pathname === "/lyric") return Response.json({ data: { lyric: "[00:01.00]测试歌词" } });
   return Response.json({ data: [] });
