@@ -3,3 +3,11 @@ build/
 *.xcuserstate
 xcuserdata/
 .DS_Store
+
+# Local configuration and secrets
+.env
+.env.*
+!.env.example
+secrets/
+wrangler.local.toml
+CloudflareGateway/.dev.vars
